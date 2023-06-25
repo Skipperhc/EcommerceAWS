@@ -6,6 +6,7 @@ import { Construct } from "constructs"
 
 export class ProductsAppStack extends cdk.Stack {
     readonly productsFetchHandler: lambdaNodeJS.NodejsFunction // Aqui será o nosso controle programatico sobre a função, como apontamos para a função
+    readonly productsAdminHandler: lambdaNodeJS.NodejsFunction //Criando um handler para a leitura dos itens da tabela productsDdb
     readonly productsDdb: dynadb.Table //Tabela de produtos do dynamoDB
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -43,6 +44,24 @@ export class ProductsAppStack extends cdk.Stack {
         )
         this.productsDdb.grantReadData(this.productsFetchHandler) //Dando permissão para que a stack productsFetchHandler consiga ler a tabela productsDdb
 
-
+        this.productsAdminHandler = new lambdaNodeJS.NodejsFunction(
+            this,
+            "ProductsAdminHandler", //id da função lambda, vai ser como iremos identificar na AWS
+            {
+                functionName: "ProductsAdminHandler",
+                entry: "lambda/products/productsAdminFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+                handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+                memorySize: 128, //quantos MB será separado para o funcionamento da função
+                timeout: cdk.Duration.seconds(5), //timeout he
+                bundling: {
+                    minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                    sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+                },
+                environment: {
+                    PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
+                }
+            }
+        )
+        this.productsDdb.grantWriteData(this.productsAdminHandler)
     }
 }
