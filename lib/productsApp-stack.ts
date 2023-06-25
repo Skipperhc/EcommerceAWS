@@ -1,13 +1,28 @@
 import * as lambda from "aws-cdk-lib/aws-lambda"
 import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
 import * as cdk from "aws-cdk-lib"
+import * as dynadb from "aws-cdk-lib/aws-dynamodb"
 import { Construct } from "constructs"
 
 export class ProductsAppStack extends cdk.Stack {
     readonly productsFetchHandler: lambdaNodeJS.NodejsFunction // Aqui será o nosso controle programatico sobre a função, como apontamos para a função
+    readonly productsDdb: dynadb.Table //Tabela de produtos do dynamoDB
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
+
+        //Inicializando variavel com dados da tabela no dynamoDB
+        this.productsDdb = new dynadb.Table(this, "ProductsDdb", {
+            tableName: "products",
+            removalPolicy: cdk.RemovalPolicy.DESTROY, //por padrão ele deixa como RETAIN, que é para manter a tabela mesmo se a stack for excluida, deixamos como destroy para fins de estudo
+            partitionKey: { //Descrição de como vamos identificar cada item dessa tabela, no caso, o nome vai ser "id" do tipo string
+                name: "id",
+                type: dynadb.AttributeType.STRING
+            },
+            billingMode: dynadb. BillingMode.PROVISIONED, //Mudamos tbm o modo como queremos ser cobrados pelo uso do dynamoDB, ao invez de pagar por uso, estamos escolhendo o provisionado, temos 30gb livres por 1 ano
+            readCapacity: 1, //Por padrão podemos receber 5 chamadas de leitura por segundo, mudamos para apenas 1, para fins educativos vai ser o suficiente
+            writeCapacity: 1 //Por padrão podemos receber 5 chamadas de escrita por segundo, mudamos para apenas 1, para fins educativos vai ser o suficiente
+        })
         this.productsFetchHandler = new lambdaNodeJS.NodejsFunction(
             this, 
             "ProductsFetchFunction", //id da função lambda, vai ser como iremos identificar na AWS
