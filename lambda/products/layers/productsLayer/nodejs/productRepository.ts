@@ -41,4 +41,30 @@ export class ProductRepository {
             throw new Error('Product not found')
         }
     }
+
+    //Irei retornar o produto completo por conta do id, recebemos sem id, devolvemos com id gerado
+    async create(product: Product): Promise<Product>{
+        product.id = uuid()
+        await this.ddbClient.put({
+            TableName: this.productsDdb,
+            Item: product //Podemos especificar cada coluna da tabela, mas por estarmos utilizando uma interface com os campos já criados, podemos apenas passar o produto para o put
+        }).promise()
+        return product //retornamos o produto com o id
+    }
+
+    async deleteProduct(productId: string): Promise<Product> {
+        const data = await this.ddbClient.delete({
+            TableName: this.productsDdb,
+            Key: {
+                id: productId
+            },
+            ReturnValues: "ALL_OLD" //Está configuração normalmente é NONE, ela irá trazer todos os dados do produto excluido
+        }).promise()
+        //Caso não tenha nenhum valor nesses attributes, significa que não foi deletado nenhum produto do banco de dados
+        if(data.Attributes) {
+            return data.Attributes as Product
+        } else {
+            throw new Error('Product not found')
+        }
+    }
 }
