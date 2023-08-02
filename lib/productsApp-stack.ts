@@ -1,7 +1,11 @@
 import * as lambda from "aws-cdk-lib/aws-lambda"
+
 import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
+
 import * as cdk from "aws-cdk-lib"
 import * as dynadb from "aws-cdk-lib/aws-dynamodb"
+import * as ssm from "aws-cdk-lib/aws-ssm"
+
 import { Construct } from "constructs"
 
 export class ProductsAppStack extends cdk.Stack {
@@ -24,6 +28,11 @@ export class ProductsAppStack extends cdk.Stack {
             readCapacity: 1, //Por padrão podemos receber 5 chamadas de leitura por segundo, mudamos para apenas 1, para fins educativos vai ser o suficiente
             writeCapacity: 1 //Por padrão podemos receber 5 chamadas de escrita por segundo, mudamos para apenas 1, para fins educativos vai ser o suficiente
         })
+
+        //Products Layer
+        const productsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductsLayerVersionArn")
+        const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn", productsLayerArn) //Estou acessando o AppLayers através de parâmetros
+
         this.productsFetchHandler = new lambdaNodeJS.NodejsFunction(
             this,
             "ProductsFetchFunction", //id da função lambda, vai ser como iremos identificar na AWS
@@ -39,7 +48,8 @@ export class ProductsAppStack extends cdk.Stack {
                 },
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
-                }
+                },
+                layers: [productsLayer]
             }
         )
         this.productsDdb.grantReadData(this.productsFetchHandler) //Dando permissão para que a stack productsFetchHandler consiga ler a tabela productsDdb
@@ -59,7 +69,8 @@ export class ProductsAppStack extends cdk.Stack {
                 },
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
-                }
+                },
+                layers: [productsLayer]
             }
         )
         this.productsDdb.grantWriteData(this.productsAdminHandler)
