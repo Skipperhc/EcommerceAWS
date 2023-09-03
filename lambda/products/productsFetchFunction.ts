@@ -1,4 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
+import { ProductRepository } from "/opt/nodejs/productsLayer"; //Estamos importando desse jeito por conta do lambda, quando subirmos para a aws o lambda vai armazenar de um modo diferente, ao invés de apontar para o caminho original, temos de criar o nosso próprio
+import { DynamoDB } from "aws-sdk"
+
+const productsDdb = process.env.PRODUCTS_DDB! //no arquivo productsApp-stack passamos para a variavel PRODUCTS_DDB o nome da tabela, e aqui estaremos recuperando
+const ddbClient = new DynamoDB.DocumentClient()
+
+const productRepository = new ProductRepository(ddbClient, productsDdb)
 
 export async function handler(event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
     
@@ -14,20 +21,30 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
     if(event.resource === "/products") {
         if(method === "GET") {
             console.log("GET - /Products")
+            
+            const products = await productRepository.getAllProducts()
 
             return {
                 statusCode: 200,
-                body: JSON.stringify({
-                    message: "GET Products - OK"
-                })
+                body: JSON.stringify(products)
             }
         }
     } else if(event.resource === "/products/{id}") {
         const productId = event.pathParameters!.id as string
         console.log(`GET /products/${productId}`)
-        return {
-            statusCode: 200,
-            body: `GET /products/${productId}`
+        
+        try {
+            const product = await productRepository.getProductById(productId)
+            return {
+                statusCode: 200,
+                body: JSON.stringify(product)
+            }
+        } catch (error) {
+            console.error((<Error>error).message)
+            return {
+                statusCode: 404,
+                body: (<Error>error).message
+            }
         }
     }
 
