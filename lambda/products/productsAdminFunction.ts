@@ -26,21 +26,21 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
     } else if (event.resource === "/products/{id}") {
         const productId = event.pathParameters!.id as string
         if (event.httpMethod === "PUT") {
-            console.log(`PUT /products/${productId}`)
-            try {
-                const product = JSON.parse(event.body!) as Product
-                const productUpdated = await productRepository.updateProduct(productId, product)
-                
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify(productUpdated)
-                }
-            } catch (ConditionalCheckFailedException) {
-                return {
-                    statusCode: 404,
-                    body: "Product not found"
-                }
-            }
+           console.log(`PUT /products/${productId}`)
+           const product = JSON.parse(event.body!) as Product
+           try {
+              const productUpdated = await productRepository.updateProduct(productId, product)
+  
+              return {
+                 statusCode: 200,
+                 body: JSON.stringify(productUpdated)
+              }      
+           } catch (ConditionalCheckFailedException) {
+              return {
+                 statusCode: 404,
+                 body: 'Product not found when trying to update'
+              }
+           }
         } else if (event.httpMethod === "DELETE") {
             console.log(`DELETE /products/${productId}`)
             try {
