@@ -7,6 +7,7 @@ export interface Product {
     code: string;
     price: number;
     model: string;
+    productUrl: string;
 }
 
 export class ProductRepository {
@@ -74,14 +75,15 @@ export class ProductRepository {
             Key: {
                 id: productId
             },
-            ConditionExpression: 'attibute_exists(id)', //Essa é uma trava, ela só vai fazer a alteração na tabela caso o produto possua um id, ou seja, se não encontrar nenhum produto não vai criar nem alterar nada
+            ConditionExpression: 'attribute_exists(id)', //Essa é uma trava, ela só vai fazer a alteração na tabela caso o produto possua um id, ou seja, se não encontrar nenhum produto não vai criar nem alterar nada
             ReturnValues: 'UPDATED_NEW', //Iremos retornar os dados atualizados do produto, vai estar novamente no campo Attributes
-            UpdateExpression: "set productName = :n, code = :c, price = :p, model = :m", //Definimos uma query que será a resposável por atualizar o produto, no caso, definimos o campo que será atualizado e o dado novo
+            UpdateExpression: "set productName = :n, code = :c, price = :p, model = :m, productUrl = :u", //Definimos uma query que será a resposável por atualizar o produto, no caso, definimos o campo que será atualizado e o dado novo
             ExpressionAttributeValues: { //Aqui definimos o significado de cada um dos itens acima
                 ":n": product.productName,
                 ":c": product.code,
                 ":p": product.price,
-                ":m": product.model
+                ":m": product.model,
+                ":u": product.productUrl
             }
         }).promise()
         data.Attributes!.id = productId //Caso não mandem um productId, essa linha irá estourar um erro que poderemos tratar depois
