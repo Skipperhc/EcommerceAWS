@@ -1,6 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda";
 import { ProductRepository } from "/opt/nodejs/productsLayer"; //Estamos importando desse jeito por conta do lambda, quando subirmos para a aws o lambda vai armazenar de um modo diferente, ao invés de apontar para o caminho original, temos de criar o nosso próprio
 import { DynamoDB } from "aws-sdk"
+import * as AWSXRay from "aws-xray-sdk"
+
+AWSXRay.captureAWS(require("aws-sdk"))
+
 
 const productsDdb = process.env.PRODUCTS_DDB! //no arquivo productsApp-stack passamos para a variavel PRODUCTS_DDB o nome da tabela, e aqui estaremos recuperando
 const ddbClient = new DynamoDB.DocumentClient()
