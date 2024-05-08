@@ -49,7 +49,8 @@ export class ProductsAppStack extends cdk.Stack {
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                 },
-                layers: [productsLayer]
+                layers: [productsLayer],
+                tracing: lambda.Tracing.ACTIVE
             }
         )
         this.productsDdb.grantReadData(this.productsFetchHandler) //Dando permissão para que a stack productsFetchHandler consiga ler a tabela productsDdb
@@ -70,7 +71,8 @@ export class ProductsAppStack extends cdk.Stack {
                 environment: {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                 },
-                layers: [productsLayer]
+                layers: [productsLayer],
+                tracing: lambda.Tracing.ACTIVE
             }
         )
         this.productsDdb.grantWriteData(this.productsAdminHandler)
