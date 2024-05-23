@@ -8,12 +8,16 @@ import * as ssm from "aws-cdk-lib/aws-ssm"
 
 import { Construct } from "constructs"
 
+interface ProductsAppStackProps extends cdk.StackProps {
+    eventsDdb: dynadb.Table //Para conseguir dar acesso a tabela de eventos, vamos importar ela nessa stack e permitir que a stack de admin acesse ela
+}
+
 export class ProductsAppStack extends cdk.Stack {
     readonly productsFetchHandler: lambdaNodeJS.NodejsFunction // Aqui será o nosso controle programatico sobre a função, como apontamos para a função
     readonly productsAdminHandler: lambdaNodeJS.NodejsFunction //Criando um handler para a leitura dos itens da tabela productsDdb
     readonly productsDdb: dynadb.Table //Tabela de produtos do dynamoDB
 
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    constructor(scope: Construct, id: string, props: ProductsAppStackProps) {
         super(scope, id, props)
 
         //Inicializando variavel com dados da tabela no dynamoDB
@@ -32,6 +36,28 @@ export class ProductsAppStack extends cdk.Stack {
         //Products Layer
         const productsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductsLayerVersionArn")
         const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn", productsLayerArn) //Estou acessando o AppLayers através de parâmetros
+
+        const productEventsHandler = new lambdaNodeJS.NodejsFunction(
+            this,
+            "ProductsEventsFunction", //id da função lambda, vai ser como iremos identificar na AWS
+            {
+                functionName: "ProductsEventsFunction",
+                entry: "lambda/products/productEventsFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+                handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+                memorySize: 128, //quantos MB será separado para o funcionamento da função
+                timeout: cdk.Duration.seconds(2), //timeout he
+                bundling: {
+                    minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                    sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+                },
+                environment: {
+                    EVENTS_DDB: props.eventsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
+                },
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+            }
+        )
+        props.eventsDdb.grantWriteData(productEventsHandler)
 
         this.productsFetchHandler = new lambdaNodeJS.NodejsFunction(
             this,
@@ -70,7 +96,8 @@ export class ProductsAppStack extends cdk.Stack {
                     sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
                 },
                 environment: {
-                    PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
+                    PRODUCTS_DDB: this.productsDdb.tableName, //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
+                    PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName
                 },
                 layers: [productsLayer],
                 tracing: lambda.Tracing.ACTIVE, //Ativando o X-RAY, com ele conseguimos ter noção de quanto tempo foi gasto em cada ação (ativando lambda, acessando o mongodb, etc)
@@ -78,5 +105,6 @@ export class ProductsAppStack extends cdk.Stack {
             }
         )
         this.productsDdb.grantWriteData(this.productsAdminHandler)
+        productEventsHandler.grantInvoke(this.productsAdminHandler)
     }
 }
