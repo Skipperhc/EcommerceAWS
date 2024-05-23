@@ -50,7 +50,8 @@ export class ProductsAppStack extends cdk.Stack {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                 },
                 layers: [productsLayer],
-                tracing: lambda.Tracing.ACTIVE
+                tracing: lambda.Tracing.ACTIVE,
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
             }
         )
         this.productsDdb.grantReadData(this.productsFetchHandler) //Dando permissão para que a stack productsFetchHandler consiga ler a tabela productsDdb
@@ -72,7 +73,8 @@ export class ProductsAppStack extends cdk.Stack {
                     PRODUCTS_DDB: this.productsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                 },
                 layers: [productsLayer],
-                tracing: lambda.Tracing.ACTIVE
+                tracing: lambda.Tracing.ACTIVE, //Ativando o X-RAY, com ele conseguimos ter noção de quanto tempo foi gasto em cada ação (ativando lambda, acessando o mongodb, etc)
+                insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
             }
         )
         this.productsDdb.grantWriteData(this.productsAdminHandler)
