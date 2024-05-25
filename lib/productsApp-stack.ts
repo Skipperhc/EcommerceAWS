@@ -41,10 +41,12 @@ export class ProductsAppStack extends cdk.Stack {
             this,
             "ProductsEventsFunction", //id da função lambda, vai ser como iremos identificar na AWS
             {
+                // runtime: lambda.Runtime.NODEJS_20_X,
+                memorySize: 512,
                 functionName: "ProductsEventsFunction",
                 entry: "lambda/products/productEventsFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
                 handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
-                memorySize: 128, //quantos MB será separado para o funcionamento da função
+                // memorySize: 128, //quantos MB será separado para o funcionamento da função
                 timeout: cdk.Duration.seconds(2), //timeout he
                 bundling: {
                     minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
