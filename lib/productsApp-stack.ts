@@ -36,6 +36,10 @@ export class ProductsAppStack extends cdk.Stack {
         //Products Layer
         const productsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductsLayerVersionArn")
         const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn", productsLayerArn) //Estou acessando o AppLayers através de parâmetros
+        
+        //Product Events Layer
+        const productEventsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductEventsLayerVersionArn")
+        const productEventsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductEventsLayerVersionArn", productEventsLayerArn) //Estou acessando o AppLayers através de parâmetros
 
         const productEventsHandler = new lambdaNodeJS.NodejsFunction(
             this,
@@ -55,6 +59,7 @@ export class ProductsAppStack extends cdk.Stack {
                 environment: {
                     EVENTS_DDB: props.eventsDdb.tableName //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                 },
+                layers: [productEventsLayer],
                 tracing: lambda.Tracing.ACTIVE,
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
             }
@@ -101,7 +106,7 @@ export class ProductsAppStack extends cdk.Stack {
                     PRODUCTS_DDB: this.productsDdb.tableName, //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                     PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName
                 },
-                layers: [productsLayer],
+                layers: [productsLayer, productEventsLayer],
                 tracing: lambda.Tracing.ACTIVE, //Ativando o X-RAY, com ele conseguimos ter noção de quanto tempo foi gasto em cada ação (ativando lambda, acessando o mongodb, etc)
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
             }
