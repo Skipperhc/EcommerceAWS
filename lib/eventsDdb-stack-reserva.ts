@@ -8,7 +8,7 @@ export class EventsDdbStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
-        this.table = new dynamodb.Table(this, "EventsDdb", {
+        this.table = new dynamodb.Table(scope, "EventsDdb", {
             tableName: "events",
             removalPolicy: cdk.RemovalPolicy.DESTROY,
             partitionKey: {
