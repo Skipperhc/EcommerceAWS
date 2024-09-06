@@ -6,8 +6,9 @@ import { Construct } from "constructs"
 
 //para não ter de ficar adicionando vários parametros, criamos uma interface que vai ter os dados que precisamos, é um objeto com todos os parametros que queremos
 interface ECommerceApiStackProps extends cdk.StackProps {
-    productsFetchHandler: lambdaNodeJS.NodejsFunction
-    productsAdminHandler: lambdaNodeJS.NodejsFunction
+    productsFetchHandler: lambdaNodeJS.NodejsFunction;
+    productsAdminHandler: lambdaNodeJS.NodejsFunction;
+    ordersHandler: lambdaNodeJS.NodejsFunction;
 }
 
 export class ECommerceApiStack extends cdk.Stack {
@@ -36,6 +37,29 @@ export class ECommerceApiStack extends cdk.Stack {
         })
 
         //aqui usamos os parametros passado pelo props, no caso um meio de apontar para a stack de produtos
+        this.createProductsService(props, api)
+        this.createOrdersService(props, api)
+    }
+
+    private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
+        const orderIntegration = new apigateway.LambdaIntegration(props.ordersHandler)
+
+        //resource - -/orders
+        const ordersResorce = api.root..addResource('orders')
+
+        //GET /orders
+        //GET /orders?email=matilde@email.com
+        //GET /orders?email=matilde@email.com&orderId=123
+        ordersResorce.addMethod("GET", orderIntegration)
+
+        //DELETE /orders?email=matilde@email.com&orderId=123
+        ordersResorce.addMethod("DELETE", orderIntegration)
+
+        //POST /orders
+        ordersResorce.addMethod("POST", orderIntegration)
+
+    }
+    private createProductsService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
         const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
 
         // GET "/products"
