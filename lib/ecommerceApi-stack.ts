@@ -42,23 +42,25 @@ export class ECommerceApiStack extends cdk.Stack {
     }
 
     private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
-        const orderIntegration = new apigateway.LambdaIntegration(props.ordersHandler)
+        const ordersIntegration = new apigateway.LambdaIntegration(props.ordersHandler)
 
         //resource - -/orders
-        const ordersResorce = api.root..addResource('orders')
+        const ordersResorce = api.root.addResource('orders')
 
         //GET /orders
         //GET /orders?email=matilde@email.com
         //GET /orders?email=matilde@email.com&orderId=123
-        ordersResorce.addMethod("GET", orderIntegration)
+        ordersResorce.addMethod("GET", ordersIntegration)
 
         //DELETE /orders?email=matilde@email.com&orderId=123
-        ordersResorce.addMethod("DELETE", orderIntegration)
+        ordersResorce.addMethod("DELETE", ordersIntegration)
 
         //POST /orders
-        ordersResorce.addMethod("POST", orderIntegration)
+        ordersResorce.addMethod("POST", ordersIntegration)
 
     }
+
+
     private createProductsService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
         const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
 
