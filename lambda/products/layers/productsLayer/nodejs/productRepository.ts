@@ -43,6 +43,24 @@ export class ProductRepository {
         }
     }
 
+    async getProductsByIds(productsIds: string[]): Promise<Product[]> {
+        const keys: { id: string; }[] = []
+        productsIds.forEach((productId) => {
+            keys.push({
+                id: productId
+            })
+        })
+        //////////Ponto interessante aqui, ele faz uma querry que busca por vários IDs, pode ser util guardar essa partezinha
+        const data = await this.ddbClient.batchGet({
+            RequestItems: {
+                [this.productsDdb]: {
+                    Keys: keys
+                }
+            }
+        }).promise()
+        return data.Responses![this.productsDdb] as Product[]
+    }
+
     //Irei retornar o produto completo por conta do id, recebemos sem id, devolvemos com id gerado
     async create(product: Product): Promise<Product>{
         product.id = uuid()
