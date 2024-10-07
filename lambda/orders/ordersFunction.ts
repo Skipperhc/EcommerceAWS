@@ -84,6 +84,20 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         //Temos certeza de que vai vir preenchido por conta da validação feita no APIGATEWAY
         const email = event.queryStringParameters!.email!
         const orderId = event.queryStringParameters!.orderId!
+
+        try {
+            const orderDelete = await orderRepository.deleteOrder(email, orderId)
+            return {
+                statusCode: 200,
+                body: JSON.stringify(convertToOrderResponse(orderDelete))
+            }
+        } catch (error) {
+            console.log((<Error>error).message)
+            return {
+                statusCode: 404,
+                body: (<Error>error).message
+            }
+        }
     }
 
     return {
