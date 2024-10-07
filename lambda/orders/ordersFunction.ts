@@ -3,7 +3,7 @@ import { Order, OrderRepository } from "/opt/nodejs/ordersLayer"
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import * as AWSXRay from "aws-xray-sdk"
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda"
-import { OrderProductResponse, OrderRequest } from "/opt/nodejs/ordersApiLayer"
+import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
 
 AWSXRay.captureAWS(require("aws-sdk"))
 
@@ -53,6 +53,34 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         statusCode: 400,
         body: "Bad request"
     }
+}
+
+function convertToOrderResponse(order: Order): OrderResponse {
+    const orderProducts: OrderProductResponse[] = []
+
+    order.products.forEach((product) => {
+        orderProducts.push({
+            code: product.code,
+            price: product.price
+        })
+    }) 
+
+    const OrderResponse: OrderResponse = {
+        email: order.pk,
+        id: order.sk!,
+        createdAt: order.createdAt!,
+        products: orderProducts,
+        billing: {
+            payment: order.billing.payment as PaymentType,
+            totalPrice: order.billing.totalPrice
+        },
+        shipping: {
+            type: order.shipping.type as ShippingType,
+            carrier: order.shipping.carrier as CarrierType
+        }
+    }
+
+    return OrderResponse
 }
 
 function buildOrder(orderRequest: OrderRequest, products: Product[]): Order {
