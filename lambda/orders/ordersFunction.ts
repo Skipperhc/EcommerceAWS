@@ -27,24 +27,45 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
             const email = event.queryStringParameters!.email!
             const orderId = event.queryStringParameters!.orderId!
             if (email) {
-                if(orderId) {
+                if (orderId) {
                     //Get one order from an user
+                    try {
+                        const order = await orderRepository.getOrder(email, orderId)
+
+                        return {
+                            statusCode: 200,
+                            body: JSON.stringify(convertToOrderResponse(order))
+                        }
+                    } catch (error) {
+                        console.log((<Error>error).message)
+                        return {
+                            statusCode: 404,
+                            body: (<Error>error).message
+                        }
+                    }
                 } else {
                     //Get all orders from an user
+                    const orders = await orderRepository.getOrdersByEmail(email)
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify(orders.map(convertToOrderResponse))
+                    }
                 }
             }
-            
+
         } else {
             //Get all orders
+            const orders = await orderRepository.getAllOrders()
+            return {
+                statusCode: 200,
+                body: JSON.stringify(orders.map(convertToOrderResponse))
+            }
         }
-
-        console.log("GET  /orders")
-
     } else if (method === "POST") {
         console.log("POST  /orders")
         const orderRequest = JSON.parse(event.body!) as OrderRequest
         const products = await productRepository.getProductsByIds(orderRequest.productIds)
-        if(products.length === orderRequest.productIds.length) {
+        if (products.length === orderRequest.productIds.length) {
             const order = buildOrder(orderRequest, products)
             const orderCreated = await orderRepository.createOrder(order)
 
@@ -79,7 +100,7 @@ function convertToOrderResponse(order: Order): OrderResponse {
             code: product.code,
             price: product.price
         })
-    }) 
+    })
 
     const OrderResponse: OrderResponse = {
         email: order.pk,
