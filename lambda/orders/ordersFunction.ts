@@ -1,8 +1,9 @@
 import { DynamoDB } from "aws-sdk"
-import { OrderRepository } from "/opt/nodejs/ordersLayer"
-import { ProductRepository } from "/opt/nodejs/productsLayer"
+import { Order, OrderRepository } from "/opt/nodejs/ordersLayer"
+import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import * as AWSXRay from "aws-xray-sdk"
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda"
+import { OrderProductResponse, OrderRequest } from "/opt/nodejs/ordersApiLayer"
 
 AWSXRay.captureAWS(require("aws-sdk"))
 
@@ -52,4 +53,31 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         statusCode: 400,
         body: "Bad request"
     }
+}
+
+function buildOrder(orderRequest: OrderRequest, products: Product[]): Order {
+    const orderProducts: OrderProductResponse[] = []
+    let totalPrice = 0
+
+    products.forEach((product) => {
+        totalPrice += product.price
+        orderProducts.push({
+            code: product.code,
+            price: product.price
+        })
+    })
+
+    const order: Order = {
+        pk: orderRequest.email,
+        billing: {
+            payment: orderRequest.payment,
+            totalPrice: totalPrice
+        },
+        shipping: {
+            type: orderRequest.shipping.type,
+            carrier: orderRequest.shipping.carrier
+        },
+        products: orderProducts
+    }
+    return order
 }
