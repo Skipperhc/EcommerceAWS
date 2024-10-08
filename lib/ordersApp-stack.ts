@@ -3,6 +3,8 @@ import * as lambdaNodeJS from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as cdk from 'aws-cdk-lib'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as ssm from 'aws-cdk-lib/aws-ssm'
+import * as sns from "aws-cdk-lib/aws-sns"
+import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import { Construct } from 'constructs'
 
 interface OrdersAppStackProps extends cdk.StackProps {
@@ -42,6 +44,12 @@ export class OrdersAppStack extends cdk.Stack {
         //Products Layer
         const productsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductsLayerVersionArn")
         const productsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductsLayerVersionArn", productsLayerArn) //Estou acessando o AppLayers através de parâmetros
+
+        //Dica dele de criar um unico topico por modelo, por exemplo, "order"
+        const ordersTopic = new sns.Topic(this, "OrderEventsTopic", {
+            displayName: "Order events topic",
+            topicName: "order-events"
+        })
 
         this.ordersHandler = new lambdaNodeJS.NodejsFunction(this, "OrdersFunction", {
             // runtime: lambda.Runtime.NODEJS_20_X,
