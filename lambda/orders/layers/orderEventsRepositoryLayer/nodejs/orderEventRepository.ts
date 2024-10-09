@@ -10,7 +10,7 @@ export interface OrderEventDdb {
     eventType: string;
     info: {
         orderId: string;
-        productCodes: string;
+        productCodes: string[];
         messageId: string;
     }
 }
