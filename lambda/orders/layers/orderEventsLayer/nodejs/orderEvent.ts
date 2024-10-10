@@ -1,6 +1,6 @@
 export enum OrderEventType {
-    CREATED = "CREATED",
-    DELETED = "DELETED"
+    CREATED = "ORDER_CREATED",
+    DELETED = "ORDER_DELETED"
 }
 
 export interface Envelope {
