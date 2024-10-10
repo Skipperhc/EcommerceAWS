@@ -108,6 +108,7 @@ export class OrdersAppStack extends cdk.Stack {
         })
 
         ordersTopic.addSubscription(new subs.LambdaSubscription(orderEventsHandler))
+        
         const eventsDdbPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
             actions: ["dynamodb:PutItem"],
