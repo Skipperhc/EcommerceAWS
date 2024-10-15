@@ -171,5 +171,8 @@ export class OrdersAppStack extends cdk.Stack {
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
         })
 
+        //Criamos a lambda, acionamos ela quando existir uma queue e demos permissão a lambda de ler as mensagens do SQS
+        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue))
+        orderEventsQueue.grantConsumeMessages(orderEmailsHandler)
     }
 }
