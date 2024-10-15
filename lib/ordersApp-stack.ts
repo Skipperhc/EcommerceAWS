@@ -146,13 +146,31 @@ export class OrdersAppStack extends cdk.Stack {
             }
         }))
 
-        //inscrevendo o SQS no topic de orders
+        //Criando outra fila, para guardar as mensagens que deram erro ao tentar tratar
+        const orderEventsDlq = new sqs.Queue(this, "OrderEventsDlq", {
+            queueName: "OrderEventsDlq",
+            enforceSSL: false,
+            encryption: sqs.QueueEncryption.UNENCRYPTED,
+            retentionPeriod: cdk.Duration.days(10),
+        })
+        //inscrevendo o SQS no topic de orders e adicionando uma tratativa para mensagens que deem erro, no caso, serem encaminhadas para a dead letter queue
         const orderEventsQueue = new sqs.Queue(this, "OrderEventsQueue", {
             queueName: "order-events",
             enforceSSL: false,
             encryption: sqs.QueueEncryption.UNENCRYPTED,
+            deadLetterQueue: {
+                maxReceiveCount: 3,
+                queue: orderEventsDlq
+            }
         })
-        ordersTopic.addSubscription(new subs.SqsSubscription(orderEventsQueue))
+
+        ordersTopic.addSubscription(new subs.SqsSubscription(orderEventsQueue, {
+            filterPolicy: {
+                eventType: sns.SubscriptionFilter.stringFilter({
+                    allowlist: ['ORDER_CREATED']
+                })
+            }
+        }))
 
         const orderEmailsHandler = new lambdaNodeJS.NodejsFunction(this, "OrderEmailsFunction", {
             // runtime: lambda.Runtime.NODEJS_20_X,
@@ -172,7 +190,11 @@ export class OrdersAppStack extends cdk.Stack {
         })
 
         //Criamos a lambda, acionamos ela quando existir uma queue e demos permissão a lambda de ler as mensagens do SQS
-        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue))
+        orderEmailsHandler.addEventSource(new lambdaEventSource.SqsEventSource(orderEventsQueue, {
+            batchSize: 5,
+            enabled: true,
+            maxBatchingWindow: cdk.Duration.minutes(1)
+        }))
         orderEventsQueue.grantConsumeMessages(orderEmailsHandler)
     }
 }
