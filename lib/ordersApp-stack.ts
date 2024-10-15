@@ -6,6 +6,8 @@ import * as ssm from 'aws-cdk-lib/aws-ssm'
 import * as sns from "aws-cdk-lib/aws-sns"
 import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import * as iam from "aws-cdk-lib/aws-iam"
+import * as sqs from "aws-cdk-lib/aws-sqs"
+import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources"
 import { Construct } from 'constructs'
 
 interface OrdersAppStackProps extends cdk.StackProps {
@@ -81,8 +83,6 @@ export class OrdersAppStack extends cdk.Stack {
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
         })
 
-
-
         ordersDdb.grantReadWriteData(this.ordersHandler)
         props.productsDdb.grantReadData(this.ordersHandler)
         ordersTopic.grantPublish(this.ordersHandler)
@@ -145,5 +145,12 @@ export class OrdersAppStack extends cdk.Stack {
                 })
             }
         }))
+
+        const orderEventsQueue = new sqs.Queue(this, "OrderEventsQueue", {
+            queueName: "order-events",
+            enforceSSL: false,
+            encryption: sqs.QueueEncryption.UNENCRYPTED,
+        })
+        ordersTopic.addSubscription(new subs.SqsSubscription(orderEventsQueue))
     }
 }
