@@ -4,6 +4,7 @@ import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
 import * as cdk from "aws-cdk-lib"
 import * as dynadb from "aws-cdk-lib/aws-dynamodb"
 import * as ssm from "aws-cdk-lib/aws-ssm"
+import * as sqs from "aws-cdk-lib/aws-sqs"
 import { Construct } from "constructs"
 
 interface ProductsAppStackProps extends cdk.StackProps {
@@ -39,6 +40,13 @@ export class ProductsAppStack extends cdk.Stack {
         const productEventsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductEventsLayerVersionArn")
         const productEventsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductEventsLayerVersionArn", productEventsLayerArn) //Estou acessando o AppLayers através de parâmetros
 
+        const productEventsDlq = new sqs.Queue(this, "ProductEventsDlq", {
+            queueName: "product-events-dlq",
+            enforceSSL: false,
+            encryption: sqs.QueueEncryption.UNENCRYPTED,
+            retentionPeriod: cdk.Duration.days(10),
+        })
+        
         const productEventsHandler = new lambdaNodeJS.NodejsFunction(
             this,
             "ProductsEventsFunction", //id da função lambda, vai ser como iremos identificar na AWS
@@ -50,6 +58,8 @@ export class ProductsAppStack extends cdk.Stack {
                 handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
                 // memorySize: 128, //quantos MB será separado para o funcionamento da função
                 timeout: cdk.Duration.seconds(2), //timeout he
+                deadLetterQueue: productEventsDlq,
+                deadLetterQueueEnabled: true,
                 bundling: {
                     minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
                     sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente

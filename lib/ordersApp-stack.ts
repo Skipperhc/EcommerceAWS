@@ -148,11 +148,12 @@ export class OrdersAppStack extends cdk.Stack {
 
         //Criando outra fila, para guardar as mensagens que deram erro ao tentar tratar
         const orderEventsDlq = new sqs.Queue(this, "OrderEventsDlq", {
-            queueName: "OrderEventsDlq",
+            queueName: "order-events-dlq",
             enforceSSL: false,
             encryption: sqs.QueueEncryption.UNENCRYPTED,
             retentionPeriod: cdk.Duration.days(10),
         })
+        
         //inscrevendo o SQS no topic de orders e adicionando uma tratativa para mensagens que deem erro, no caso, serem encaminhadas para a dead letter queue
         const orderEventsQueue = new sqs.Queue(this, "OrderEventsQueue", {
             queueName: "order-events",
