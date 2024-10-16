@@ -24,5 +24,29 @@ export class EventsDdbStack extends cdk.Stack {
             readCapacity: 1,
             writeCapacity: 1
         })
+
+        //Aqui estamos configurando o autoscale para leitura na tabela
+        const readScale = this.table.autoScaleReadCapacity({
+            maxCapacity: 2,
+            minCapacity: 1
+        })
+        //Aqui estamos definindo quando o autoscale será usado, quanto tempo depois de quebrar a barreira e quanto tempo depois de esfriar
+        readScale.scaleOnUtilization({
+            targetUtilizationPercent:50,
+            scaleInCooldown: cdk.Duration.seconds(60),
+            scaleOutCooldown: cdk.Duration.seconds(60)
+        })
+
+        const writeScale = this.table.autoScaleWriteCapacity({
+            maxCapacity: 4,
+            minCapacity: 1
+        })
+
+        writeScale.scaleOnUtilization({
+            targetUtilizationPercent:30,
+            scaleInCooldown: cdk.Duration.seconds(60),
+            scaleOutCooldown: cdk.Duration.seconds(60)
+        })
+
     }
 }
