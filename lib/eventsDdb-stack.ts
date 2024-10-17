@@ -25,14 +25,14 @@ export class EventsDdbStack extends cdk.Stack {
         this.table.addGlobalSecondaryIndex({
             indexName: "emailIndex",
             partitionKey: {
-                name: "email",
-                type: dynamodb.AttributeType.STRING
+               name: "email",
+               type: dynamodb.AttributeType.STRING
             },
             sortKey: {
-                name: "sk",
-                type: dynamodb.AttributeType.STRING
+               name: "sk",
+               type: dynamodb.AttributeType.STRING
             },
-            projectionType: dynamodb.ProjectionType.ALL
-        })
+            projectionType: dynamodb.ProjectionType.ALL,
+         })
     }
 }

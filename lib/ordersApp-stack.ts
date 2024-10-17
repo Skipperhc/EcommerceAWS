@@ -220,7 +220,7 @@ export class OrdersAppStack extends cdk.Stack {
                 sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
             },
             environment: {
-                EVENTS_DDV: props.eventsDdb.tableName
+                EVENTS_DDB: props.eventsDdb.tableName
             },
             layers: [orderEventsRepositoryLayer],
             tracing: lambda.Tracing.ACTIVE,
@@ -229,7 +229,7 @@ export class OrdersAppStack extends cdk.Stack {
 
         const eventsFetchDdbPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["dynamodb:Query"],
+            actions: ['dynamodb:Query'],
             resources: [`${props.eventsDdb.tableArn}/index/emailIndex`]
         })
         this.orderEventsFetchHandler.addToRolePolicy(eventsFetchDdbPolicy)
