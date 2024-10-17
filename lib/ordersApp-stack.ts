@@ -17,6 +17,8 @@ interface OrdersAppStackProps extends cdk.StackProps {
 
 export class OrdersAppStack extends cdk.Stack {
     readonly ordersHandler: lambdaNodeJS.NodejsFunction
+    readonly orderEventsFetchHandler: lambdaNodeJS.NodejsFunction
+
     constructor(scope: Construct, id: string, props: OrdersAppStackProps) {
         super(scope, id, props)
 
@@ -153,7 +155,7 @@ export class OrdersAppStack extends cdk.Stack {
             encryption: sqs.QueueEncryption.UNENCRYPTED,
             retentionPeriod: cdk.Duration.days(10),
         })
-        
+
         //inscrevendo o SQS no topic de orders e adicionando uma tratativa para mensagens que deem erro, no caso, serem encaminhadas para a dead letter queue
         const orderEventsQueue = new sqs.Queue(this, "OrderEventsQueue", {
             queueName: "order-events",
@@ -200,9 +202,36 @@ export class OrdersAppStack extends cdk.Stack {
 
         const orderEmailPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["ses:SendEmail","ses:SendRawEmail"],
+            actions: ["ses:SendEmail", "ses:SendRawEmail"],
             resources: ["*"]
         })
         orderEmailsHandler.addToRolePolicy(orderEmailPolicy)
+
+        this.orderEventsFetchHandler = new lambdaNodeJS.NodejsFunction(this, "OrderEventsFetchFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "OrderEventsFetchFunction",
+            entry: "lambda/orders/orderEventsFetchFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            environment: {
+                EVENTS_DDV: props.eventsDdb.tableName
+            },
+            layers: [orderEventsRepositoryLayer],
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
+
+        const eventsFetchDdbPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:Query"],
+            resources: [`${props.eventsDdb.tableArn}/index/emailIndex`]
+        })
+        this.orderEventsFetchHandler.addToRolePolicy(eventsFetchDdbPolicy)
     }
 }
