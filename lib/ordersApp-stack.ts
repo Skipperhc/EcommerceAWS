@@ -197,5 +197,12 @@ export class OrdersAppStack extends cdk.Stack {
             maxBatchingWindow: cdk.Duration.minutes(1)
         }))
         orderEventsQueue.grantConsumeMessages(orderEmailsHandler)
+
+        const orderEmailPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["ses:SendEmail","ses:SendRawEmail"],
+            resources: ["*"]
+        })
+        orderEmailsHandler.addToRolePolicy(orderEmailPolicy)
     }
 }
