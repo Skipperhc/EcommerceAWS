@@ -24,6 +24,10 @@ export class EventsDdbStack extends cdk.Stack {
             //readCapacity: 1,
             //writeCapacity: 1
         })
+
+        //Só pra salvar para depois, aqui abaixo está como criar o auto scale do banco de dados
+
+
         /*
         //Aqui estamos configurando o autoscale para leitura na tabela
         const readScale = this.table.autoScaleReadCapacity({
