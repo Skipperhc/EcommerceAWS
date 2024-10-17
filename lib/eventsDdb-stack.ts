@@ -22,6 +22,8 @@ export class EventsDdbStack extends cdk.Stack {
             timeToLiveAttribute: "ttl",
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
         })
+
+        //Aqui estou criando um GSI da tabela de eventos, trocando a pk para email.
         this.table.addGlobalSecondaryIndex({
             indexName: "emailIndex",
             partitionKey: {
