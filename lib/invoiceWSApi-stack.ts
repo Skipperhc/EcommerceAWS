@@ -130,7 +130,7 @@ export class InvoiceWSApistack extends cdk.Stack {
                 }
             }
         })
-        
+
         //Estou dando a permissão a lambda de colocar um obj no bucket, se não, o usuário não consegue colocar o item pela url
         const invoicesBucketPutObjectPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
@@ -208,6 +208,13 @@ export class InvoiceWSApistack extends cdk.Stack {
         webSocketApi.grantManageConnections(cancelImportHandler)
 
         //WebSocket API routes
+        webSocketApi.addRoute("getImportUrl", {
+            integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("GetUrlHandler", getUrlHandler)
+        })
+
+        webSocketApi.addRoute("cancelImport", {
+            integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("CancelImportHandler", cancelImportHandler)
+        })
     }
 }
 
