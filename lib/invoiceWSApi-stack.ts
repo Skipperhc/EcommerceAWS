@@ -143,6 +143,36 @@ export class InvoiceWSApistack extends cdk.Stack {
         webSocketApi.grantManageConnections(getUrlHandler)
 
         //Invoice import handler
+        const invoiceImportHandler = new lambdaNodeJS.NodejsFunction(this, "InvoiceImportFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoiceImportFunction",
+            entry: "lambda/invoices/invoiceImportFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
+            environment: {
+                INVOICE_DDB: invoicesDdb.tableName,
+                INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+            }
+        })
+        invoicesDdb.grantReadWriteData(invoiceImportHandler)
+
+        bucket.addEventNotification(s3.EventType.OBJECT_CREATED, new s3n.LambdaDestination(invoiceImportHandler))
+
+        const invoicesBucketGetDeleteObjectPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["s3:GetObject", "s3:DeleteObject"],
+            resources: [`${bucket.bucketArn}/*`]
+        })
+        invoiceImportHandler.addToRolePolicy(invoicesBucketGetDeleteObjectPolicy)
+        webSocketApi.grantManageConnections(invoiceImportHandler)
 
         //Candel import handler
 
