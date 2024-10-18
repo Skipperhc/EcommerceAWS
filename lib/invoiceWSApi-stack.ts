@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib"
 import * as apigatewayv2 from "aws-cdk-lib/aws-apigatewayv2"
+import * as apigatewayv2_integrations from "aws-cdk-lib/aws-apigatewayv2-integrations"
 import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb"
 import * as lambda from "aws-cdk-lib/aws-lambda"
@@ -46,10 +47,57 @@ export class InvoiceWSApistack extends cdk.Stack {
 
 
         //WebSocket connection handler
+        const connectionHandler = new lambdaNodeJS.NodejsFunction(this, "InvoiceConnectionFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoiceConnectionFunction",
+            entry: "lambda/invoices/invoiceConnectionFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
 
         //WebSocket disconnection handler
+        const disconnectionHandler = new lambdaNodeJS.NodejsFunction(this, "InvoiceDisconnectionFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoiceDisconnectionFunction",
+            entry: "lambda/invoices/invoiceDisconnectionFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
 
         //WebSocket API
+        const webSocketApi = new apigatewayv2.WebSocketApi(this, "InvoiceWSApi", {
+            apiName: "InvoiceWSApi",
+            connectRouteOptions: {
+                integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("ConnectionHandler", connectionHandler)
+            },
+            disconnectRouteOptions: {
+                integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("DisconnectionHandler", disconnectionHandler)
+            }
+        })
+
+        const stage = "prod"
+        const wsApiEndpoint = `${webSocketApi.apiEndpoint}/${stage}`
+        new apigatewayv2.WebSocketStage(this, "InvoiceWSApiStage", {
+            webSocketApi: webSocketApi,
+            stageName: stage,
+            autoDeploy: true
+        })
 
         //Invoice URL handler
 
