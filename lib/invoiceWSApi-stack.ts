@@ -175,6 +175,37 @@ export class InvoiceWSApistack extends cdk.Stack {
         webSocketApi.grantManageConnections(invoiceImportHandler)
 
         //Candel import handler
+        const cancelImportHandler = new lambdaNodeJS.NodejsFunction(this, "CancelImportFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "CancelImportFunction",
+            entry: "lambda/invoices/cancelImportFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
+            environment: {
+                INVOICE_DDB: invoicesDdb.tableName,
+                INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+            }
+        })
+        const invoicesDdbReadWriteTransactionPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:UpdateItem", "dynamodb:GetItem"],
+            resources: [invoicesDdb.tableArn],
+            conditions: {
+                ["ForAllValuers:StringLike"]: {
+                    "dynamodb:LeadKeys": ["#transaction"]
+                }
+            }
+        })
+        cancelImportHandler.addToRolePolicy(invoicesDdbReadWriteTransactionPolicy)
+        webSocketApi.grantManageConnections(cancelImportHandler)
 
         //WebSocket API routes
     }
