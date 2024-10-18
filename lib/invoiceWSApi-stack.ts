@@ -100,6 +100,47 @@ export class InvoiceWSApistack extends cdk.Stack {
         })
 
         //Invoice URL handler
+        const getUrlHandler = new lambdaNodeJS.NodejsFunction(this, "InvoiceGetUrlFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoiceGetUrlFunction",
+            entry: "lambda/invoices/invoiceGetUrlFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
+            environment: {
+                INVOICE_DDB: invoicesDdb.tableName,
+                BUCKET_NAME: bucket.bucketName,
+                INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+            }
+        })
+        const invoicesDdbWriteTransactionPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:PutItem"],
+            resources: [invoicesDdb.tableArn],
+            conditions: {
+                ["ForAllValuers:StringLike"]: {
+                    "dynamodb:LeadKeys": ["#transaction"]
+                }
+            }
+        })
+        
+        //Estou dando a permissão a lambda de colocar um obj no bucket, se não, o usuário não consegue colocar o item pela url
+        const invoicesBucketPutObjectPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["s3:PutObject"],
+            resources: [`${bucket.bucketArn}/*`]
+        })
+
+        getUrlHandler.addToRolePolicy(invoicesBucketPutObjectPolicy)
+        getUrlHandler.addToRolePolicy(invoicesDdbWriteTransactionPolicy)
+        webSocketApi.grantManageConnections(getUrlHandler)
 
         //Invoice import handler
 
