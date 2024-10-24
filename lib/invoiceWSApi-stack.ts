@@ -7,15 +7,28 @@ import * as lambda from "aws-cdk-lib/aws-lambda"
 import * as s3 from "aws-cdk-lib/aws-s3"
 import * as iam from "aws-cdk-lib/aws-iam"
 import * as s3n from "aws-cdk-lib/aws-s3-notifications"
+import * as ssm from "aws-cdk-lib/aws-ssm"
 import { Construct } from "constructs"
 
-export class InvoiceWSApistack extends cdk.Stack {
+export class InvoiceWSApiStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
-        //invoice and invoice transaction DDB
 
-        //Criação da tabela invoices no dynamoDB
+        //Invoice transaction layer
+        const invoiceTransactionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
+        const invoiceTransactionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceWSConnectionLayer", invoiceTransactionLayerArn) //Estou acessando o AppLayers através de parâmetros
+
+        //Invoice Layer
+        const invoiceLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceRepositoryLayerVersionArn")
+        const invoiceLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceRepositoryLayer", invoiceLayerArn) //Estou 
+        //Invoice WebSocket API Layer
+        const invoiceWSConnectionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
+        const invoiceWSConnectionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceWSConnectionLayer", invoiceWSConnectionLayerArn) //Estou 
+
+        //invoice and invoice transaction DDB
+        
+                //Criação da tabela invoices no dynamoDB
         const invoicesDdb = new dynamodb.Table(this, "InvoiceDdb", {
             tableName: "invoices",
             billingMode: dynamodb.BillingMode.PROVISIONED,
@@ -112,6 +125,7 @@ export class InvoiceWSApistack extends cdk.Stack {
                 minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
                 sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
             },
+            layers: [invoiceTransactionLayer, invoiceWSConnectionLayer],
             tracing: lambda.Tracing.ACTIVE,
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
             environment: {
@@ -155,6 +169,7 @@ export class InvoiceWSApistack extends cdk.Stack {
                 minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
                 sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
             },
+            layers: [invoiceTransactionLayer, invoiceWSConnectionLayer, invoiceLayer],
             tracing: lambda.Tracing.ACTIVE,
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
             environment: {
@@ -187,6 +202,7 @@ export class InvoiceWSApistack extends cdk.Stack {
                 minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
                 sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
             },
+            layers: [invoiceTransactionLayer, invoiceWSConnectionLayer],
             tracing: lambda.Tracing.ACTIVE,
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0, //Adicionamos um novo layer para termos acesso ao lambda insights
             environment: {
