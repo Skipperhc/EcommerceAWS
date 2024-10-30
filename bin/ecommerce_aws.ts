@@ -82,3 +82,6 @@ const invoiceWSApiStack = new InvoiceWSApiStack(app, "InvoiceApi", {
   },
   env: env
 })
+
+invoiceWSApiStack.addDependency(invoicesAppLayersStack)
+invoiceWSApiStack.addDependency(eventsDdbStack)

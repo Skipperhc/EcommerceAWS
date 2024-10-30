@@ -3,8 +3,8 @@ import { ApiGatewayManagementApi, DynamoDB, S3 } from "aws-sdk"
 import {v4 as uuid } from "uuid"
 import { InvoiceTransactionStatus, InvoiceTransactionRepository } from "/opt/nodejs/invoiceTransaction"
 
+import { InvoiceWSService } from "/opt/nodejs/invoiceWSConnection"
 import * as AWSXRay from "aws-xray-sdk"
-import { time } from "console"
 
 AWSXRay.captureAWS(require("aws-sdk"))
 
@@ -19,6 +19,7 @@ const apigwManagementApi = new ApiGatewayManagementApi({
 })
 
 const invoiceTransactionRepository = new InvoiceTransactionRepository(ddbClient, invoicesDdb)
+const invoiceWSService = new InvoiceWSService(apigwManagementApi)
 
 export async function handler(event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
 
@@ -55,7 +56,13 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
     })
     
     //Send URL back to WS connected client
+    const postData = JSON.stringify({
+        url: signedUrlPut,
+        expires: expires,
+        transactionId: key
+    })
 
+    await invoiceWSService.sendData(connectionId, postData)
 
     return {
         statusCode: 200,

@@ -15,20 +15,27 @@ export class InvoiceWSApiStack extends cdk.Stack {
         super(scope, id, props)
 
 
-        //Invoice transaction layer
-        const invoiceTransactionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
-        const invoiceTransactionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceWSConnectionLayer", invoiceTransactionLayerArn) //Estou acessando o AppLayers através de parâmetros
+        //Invoice Transaction Layer
+        const invoiceTransactionLayerArn = ssm.StringParameter
+            .valueForStringParameter(this, "InvoiceTransactionLayerVersionArn")
+        const invoiceTransactionLayer = lambda.LayerVersion
+            .fromLayerVersionArn(this, "InvoiceTransactionLayer", invoiceTransactionLayerArn)
 
         //Invoice Layer
-        const invoiceLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceRepositoryLayerVersionArn")
-        const invoiceLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceRepositoryLayer", invoiceLayerArn) //Estou 
+        const invoiceLayerArn = ssm.StringParameter
+            .valueForStringParameter(this, "InvoiceRepositoryLayerVersionArn")
+        const invoiceLayer = lambda.LayerVersion
+            .fromLayerVersionArn(this, "InvoiceRepositoryLayer", invoiceLayerArn)
+
         //Invoice WebSocket API Layer
-        const invoiceWSConnectionLayerArn = ssm.StringParameter.valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
-        const invoiceWSConnectionLayer = lambda.LayerVersion.fromLayerVersionArn(this, "InvoiceWSConnectionLayer", invoiceWSConnectionLayerArn) //Estou 
+        const invoiceWSConnectionLayerArn = ssm.StringParameter
+            .valueForStringParameter(this, "InvoiceWSConnectionLayerVersionArn")
+        const invoiceWSConnectionLayer = lambda.LayerVersion
+            .fromLayerVersionArn(this, "InvoiceWSConnectionLayer", invoiceWSConnectionLayerArn)
 
         //invoice and invoice transaction DDB
-        
-                //Criação da tabela invoices no dynamoDB
+
+        //Criação da tabela invoices no dynamoDB
         const invoicesDdb = new dynamodb.Table(this, "InvoiceDdb", {
             tableName: "invoices",
             billingMode: dynamodb.BillingMode.PROVISIONED,
@@ -136,11 +143,11 @@ export class InvoiceWSApiStack extends cdk.Stack {
         })
         const invoicesDdbWriteTransactionPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["dynamodb:PutItem"],
+            actions: ['dynamodb:PutItem'],
             resources: [invoicesDdb.tableArn],
             conditions: {
-                ["ForAllValuers:StringLike"]: {
-                    "dynamodb:LeadKeys": ["#transaction"]
+                ['ForAllValues:StringLike']: {
+                    'dynamodb:LeadingKeys': ['#transaction']
                 }
             }
         })
@@ -148,7 +155,7 @@ export class InvoiceWSApiStack extends cdk.Stack {
         //Estou dando a permissão a lambda de colocar um obj no bucket, se não, o usuário não consegue colocar o item pela url
         const invoicesBucketPutObjectPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["s3:PutObject"],
+            actions: ['s3:PutObject'],
             resources: [`${bucket.bucketArn}/*`]
         })
 
@@ -212,11 +219,11 @@ export class InvoiceWSApiStack extends cdk.Stack {
         })
         const invoicesDdbReadWriteTransactionPolicy = new iam.PolicyStatement({
             effect: iam.Effect.ALLOW,
-            actions: ["dynamodb:UpdateItem", "dynamodb:GetItem"],
+            actions: ['dynamodb:UpdateItem', 'dynamodb:GetItem'],
             resources: [invoicesDdb.tableArn],
             conditions: {
-                ["ForAllValuers:StringLike"]: {
-                    "dynamodb:LeadKeys": ["#transaction"]
+                ['ForAllValues:StringLike']: {
+                    'dynamodb:LeadingKeys': ['#transaction']
                 }
             }
         })
