@@ -60,7 +60,7 @@ async function processRecord(record: S3EventRecord): Promise<void> {
 
         const invoice = JSON.parse(object.Body!.toString("utf-8")) as InvoiceFile
 
-        if (invoice.invoiceNumber.length <= 5) {
+        if (invoice.invoiceNumber.length >= 5) {
             console.log(invoice)
 
             const createInvoicePromise = invoiceRepository.create({
