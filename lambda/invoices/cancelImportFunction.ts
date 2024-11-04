@@ -45,6 +45,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, InvoiceTransactionStatus.NOT_FOUND)
     }
 
+    await invoiceWSService.disconnectClient(connectionId)
     return {
         statusCode: 200,
         body: "OK"
