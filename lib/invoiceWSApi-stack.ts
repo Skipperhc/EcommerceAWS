@@ -10,10 +10,13 @@ import * as s3n from "aws-cdk-lib/aws-s3-notifications"
 import * as ssm from "aws-cdk-lib/aws-ssm"
 import { Construct } from "constructs"
 
-export class InvoiceWSApiStack extends cdk.Stack {
-    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-        super(scope, id, props)
+interface InvoiceWSApiStackProps extends cdk.StackProps {
+    eventsDdb: dynamodb.Table
+}
 
+export class InvoiceWSApiStack extends cdk.Stack {
+    constructor(scope: Construct, id: string, props: InvoiceWSApiStackProps) {
+        super(scope, id, props)
 
         //Invoice Transaction Layer
         const invoiceTransactionLayerArn = ssm.StringParameter
@@ -239,6 +242,41 @@ export class InvoiceWSApiStack extends cdk.Stack {
         webSocketApi.addRoute("cancelImport", {
             integration: new apigatewayv2_integrations.WebSocketLambdaIntegration("CancelImportHandler", cancelImportHandler)
         })
+
+        const invoiceEventsHandler = new lambdaNodeJS.NodejsFunction(this, "InvoiceEventsFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoiceEventsFunction",
+            entry: "lambda/invoices/invoiceEventsFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            environment: {
+                EVENTS_DDB: props.eventsDdb.tableName,
+                INVOICE_WSAPI_ENDPOINT: wsApiEndpoint
+            },
+            layers: [invoiceWSConnectionLayer],
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
+
+        const eventsDdbPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["dynamodb:PutItem"],
+            resources: [props.eventsDdb.tableArn],
+            conditions: {
+                ['ForAllValues:StringLike']: {
+                    'dynamodb:LeadingKeys': ['#invoice_*']
+                }
+            }
+        })
+        invoiceEventsHandler.addToRolePolicy(eventsDdbPolicy)
+        webSocketApi.grantManageConnections(invoiceEventsHandler)
+
     }
 }
 
