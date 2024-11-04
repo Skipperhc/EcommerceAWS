@@ -8,6 +8,8 @@ import * as s3 from "aws-cdk-lib/aws-s3"
 import * as iam from "aws-cdk-lib/aws-iam"
 import * as s3n from "aws-cdk-lib/aws-s3-notifications"
 import * as ssm from "aws-cdk-lib/aws-ssm"
+import * as sqs from "aws-cdk-lib/aws-sqs"
+import * as lambdaEventsSource from "aws-cdk-lib/aws-lambda-event-sources"
 import { Construct } from "constructs"
 
 interface InvoiceWSApiStackProps extends cdk.StackProps {
@@ -277,6 +279,18 @@ export class InvoiceWSApiStack extends cdk.Stack {
         invoiceEventsHandler.addToRolePolicy(eventsDdbPolicy)
         webSocketApi.grantManageConnections(invoiceEventsHandler)
 
+        const invoiceEventsDlq = new sqs.Queue(this, "InvoiceEventsDlq", {
+            queueName: "invoice-events-dlq"
+        })
+
+        invoiceEventsHandler.addEventSource(new lambdaEventsSource.DynamoEventSource(invoicesDdb, {
+            startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+            batchSize: 5,
+            bisectBatchOnError: true,
+            onFailure: new lambdaEventsSource.SqsDlq(invoiceEventsDlq),
+            retryAttempts: 3
+        }))
+        
     }
 }
 
