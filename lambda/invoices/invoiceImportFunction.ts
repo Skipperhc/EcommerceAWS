@@ -23,10 +23,10 @@ const invoiceWSService = new InvoiceWSService(apigwManagementApi)
 const invoiceRepository = new InvoiceRepository(ddbClient, invoicesDdb)
 
 export async function handler(event: S3Event, context: Context): Promise<void> {
-    
+
     const promises: Promise<void>[] = []
     console.log(event)
-    
+
     event.Records.forEach((record) => {
         promises.push(processRecord(record))
     })
@@ -41,12 +41,11 @@ async function processRecord(record: S3EventRecord): Promise<void> {
     try {
         const invoiceTransaction = await invoiceTransactionRepository.getInvoiceTransaction(key)
 
-        if(invoiceTransaction.transactionStatus === InvoiceTransactionStatus.GENERATED) {
+        if (invoiceTransaction.transactionStatus === InvoiceTransactionStatus.GENERATED) {
             await Promise.all([
                 invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.RECEIVED),
                 invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.RECEIVED)
             ])
-
 
         } else {
             await invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, invoiceTransaction.transactionStatus)
@@ -60,32 +59,41 @@ async function processRecord(record: S3EventRecord): Promise<void> {
         }).promise()
 
         const invoice = JSON.parse(object.Body!.toString("utf-8")) as InvoiceFile
-        console.log(invoice)
 
-        const createInvoicePromise = invoiceRepository.create({
-            pk: `#invoice_${invoice.customerName}`,
-            sk: invoice.invoiceNumber,
-            ttl: 0,
-            totalValue: invoice.totalValue,
-            productId: invoice.productId,
-            quantity: invoice.quantity,
-            transactionId: key,
-            createdAt: Date.now()
-        })
+        if (invoice.invoiceNumber.length <= 5) {
+            console.log(invoice)
 
-        const deleteObjPromise = s3Client.deleteObject({
-            Key: key,
-            Bucket: bucketName
-        }).promise()
+            const createInvoicePromise = invoiceRepository.create({
+                pk: `#invoice_${invoice.customerName}`,
+                sk: invoice.invoiceNumber,
+                ttl: 0,
+                totalValue: invoice.totalValue,
+                productId: invoice.productId,
+                quantity: invoice.quantity,
+                transactionId: key,
+                createdAt: Date.now()
+            })
 
-        const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.PROCESSED)
-        const sendStatusPromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.PROCESSED)
+            const deleteObjPromise = s3Client.deleteObject({
+                Key: key,
+                Bucket: bucketName
+            }).promise()
 
-        await Promise.all([createInvoicePromise, deleteObjPromise, updateInvoicePromise, sendStatusPromise])
+            const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.PROCESSED)
+            const sendStatusPromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.PROCESSED)
 
+            await Promise.all([createInvoicePromise, deleteObjPromise, updateInvoicePromise, sendStatusPromise])
+        } else {
+            console.error(`Invoice import failed - non valid invoice number - TransactionId: ${key}`)
+
+            const sendStatuspromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
+            const updateinvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
+
+            await Promise.all([sendStatuspromise, updateinvoicePromise])
+        }
     } catch (error) {
         console.log((<Error>error).message)
     }
-    
+
 }
 
