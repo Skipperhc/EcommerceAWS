@@ -8,11 +8,13 @@ import * as subs from "aws-cdk-lib/aws-sns-subscriptions"
 import * as iam from "aws-cdk-lib/aws-iam"
 import * as sqs from "aws-cdk-lib/aws-sqs"
 import * as lambdaEventSource from "aws-cdk-lib/aws-lambda-event-sources"
+import * as event from "aws-cdk-lib/aws-events"
 import { Construct } from 'constructs'
 
 interface OrdersAppStackProps extends cdk.StackProps {
     productsDdb: dynamodb.Table
     eventsDdb: dynamodb.Table
+    auditBus: event.EventBus
 }
 
 export class OrdersAppStack extends cdk.Stack {
@@ -78,7 +80,8 @@ export class OrdersAppStack extends cdk.Stack {
             environment: {
                 PRODUCTS_DDB: props.productsDdb.tableName,
                 ORDERS_DDB: ordersDdb.tableName,
-                ORDER_EVENTS_TOPIC_ARN: ordersTopic.topicArn
+                ORDER_EVENTS_TOPIC_ARN: ordersTopic.topicArn,
+                AUDIT_BUS_NAME: props.auditBus.eventBusName
             },
             layers: [ordersLayer, productsLayer, ordersApiLayer, orderEventsLayer],
             tracing: lambda.Tracing.ACTIVE,
@@ -88,6 +91,7 @@ export class OrdersAppStack extends cdk.Stack {
         ordersDdb.grantReadWriteData(this.ordersHandler)
         props.productsDdb.grantReadData(this.ordersHandler)
         ordersTopic.grantPublish(this.ordersHandler)
+        props.auditBus.grantPutEventsTo(this.ordersHandler)
 
         const orderEventsHandler = new lambdaNodeJS.NodejsFunction(this, "OrderEventsFunction", {
             // runtime: lambda.Runtime.NODEJS_20_X,
