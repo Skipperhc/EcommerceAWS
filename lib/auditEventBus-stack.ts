@@ -24,6 +24,41 @@ export class AuditEventBusStack extends cdk.Stack {
             retention: cdk.Duration.days(10)
         })
 
+        //source: app.order
+        //detailType: order
+        //reason: PRODUCT_NOT_FOUND
+        //Ok aqui criamos a regra, quando chegar uma evento com essa descrição (source, detail e type) enviaremos esse evento ao target abaixo
+        const nonValidOrderRule = new events.Rule(this, "NonValidOrderRule", {
+            ruleName: "NonValidOrderRule",
+            description: "Rule matching non valid order",
+            eventBus: this.bus,
+            eventPattern: {
+                source: ["app.order"],
+                detailType: ["order"],
+                detail: {
+                    reason: ["PRODUCT_NOT_FOUND"]
+                }
+            }
+        })
+
+        //target
+        const ordersErrorsFunction = new lambdaNodeJS.NodejsFunction(this, "OrdersErrorsFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "OrdersErrorsFunction",
+            entry: "lambda/audit/OrdersErrorsFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
+
+        nonValidOrderRule.addTarget(new targets.LambdaFunction(ordersErrorsFunction))
     }
 
 }
