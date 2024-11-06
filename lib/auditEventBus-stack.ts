@@ -94,8 +94,32 @@ export class AuditEventBusStack extends cdk.Stack {
             tracing: lambda.Tracing.ACTIVE,
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
         })
-        
-        nonValidInvoiceRule.addTarget(new targets.LambdaFunction(invoicesErrorsFunction))
-    }
 
+        nonValidInvoiceRule.addTarget(new targets.LambdaFunction(invoicesErrorsFunction))
+
+        //source: app.invoice
+        //detailType: invoice
+        //errorDetail: TIMEOUT
+        //Ok aqui criamos a regra, quando chegar uma evento com essa descrição (source, detail e type) enviaremos esse evento ao target abaixo
+        const timeoutImportInvoiceRule = new events.Rule(this, "TimeoutImportInvoiceRule", {
+            ruleName: "TimeoutImportInvoiceRule",
+            description: "Rule matching timeout import invoice",
+            eventBus: this.bus,
+            eventPattern: {
+                source: ["app.invoice"],
+                detailType: ["invoice"],
+                detail: {
+                    errorDetail: ["TIMEOUT"]
+                }
+            }
+        })
+
+        //target
+        const invoiceImportTimeoutQueue = new sqs.Queue(this, "InvoiceImportTimeout", {
+            queueName: "invoice-import-timeout"
+        })
+
+        timeoutImportInvoiceRule.addTarget(new targets.SqsQueue(invoiceImportTimeoutQueue))
+        
+    }
 }
