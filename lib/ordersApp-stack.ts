@@ -103,7 +103,7 @@ export class OrdersAppStack extends cdk.Stack {
             filterPattern: logs.FilterPattern.literal("Some product was not found")
         })
 
-        //Alarm
+        //Alarm, criamos um alarme caso ele leia mais de 2 mensagens de erro em menos de 2 min
         const productNotFoundAlarm = productNotFoundMetricFilter.metric().with({
             statistic: "Sum",
             period: cdk.Duration.minutes(2)
