@@ -81,7 +81,7 @@ async function processExpiredTransaction(invoiceTransactionImage: { [key: string
         const putEventPromise = eventBridgeClient.putEvents({
             Entries: [
                 {
-                    Source: "app.invocie",
+                    Source: "app.invoice",
                     EventBusName: auditBusName,
                     DetailType: "invoice",
                     Time: new Date(),
