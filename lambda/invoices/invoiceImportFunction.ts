@@ -91,15 +91,15 @@ async function processRecord(record: S3EventRecord): Promise<void> {
             console.error(`Invoice import failed - non valid invoice number - TransactionId: ${key}`)
 
             //Aqui estamos enviando uma mensagem para o eventBridge
-            const putEventPromise = await eventBridgeClient.putEvents({
+            const putEventPromise = eventBridgeClient.putEvents({
                 Entries: [
                     {
-                        Source: "app.invocie",
+                        Source: 'app.invoice',
                         EventBusName: auditBusName,
-                        DetailType: "invoice",
+                        DetailType: 'invoice',
                         Time: new Date(),
                         Detail: JSON.stringify({
-                            errorDetail: "FAIL_NO_INVOICE_NUMBER",
+                            errorDetail: 'FAIL_NO_INVOICE_NUMBER',
                             info: {
                                 invoiceKey: key,
                                 customerName: invoice.customerName
@@ -107,12 +107,13 @@ async function processRecord(record: S3EventRecord): Promise<void> {
                         })
                     }
                 ]
-            })
+            }).promise()
+
 
             const sendStatuspromise = invoiceWSService.sendInvoiceStatus(key, invoiceTransaction.connectionId, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
-            const updateinvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
+            const updateInvoicePromise = invoiceTransactionRepository.updateInvoiceTransaction(key, InvoiceTransactionStatus.NON_VALID_INVOICE_NUMBER)
 
-            await Promise.all([sendStatuspromise, updateinvoicePromise, putEventPromise])
+            await Promise.all([sendStatuspromise, updateInvoicePromise, putEventPromise])
         }
         await invoiceWSService.disconnectClient(invoiceTransaction.connectionId)
     } catch (error) {
