@@ -30,7 +30,10 @@ export async function handler(event: DynamoDBStreamEvent, context: Context): Pro
         } else if (record.eventName === "MODIFY") {
 
         } else if (record.eventName === "REMOVE") {
-
+            if (record.dynamodb!.OldImage!.pk.S === '#transaction') {
+                console.log("Invoice transaction event received")
+                promises.push(processExpiredTransaction(record.dynamodb!.OldImage!))
+            }
         }
     })
 
@@ -40,8 +43,8 @@ export async function handler(event: DynamoDBStreamEvent, context: Context): Pro
 
 async function createEvent(invoiceImage: {[key: string]: AttributeValue}, eventType: string): Promise<void> {
     const timestamp = Date.now()
-    const ttl = ~~(timestamp/ 1000 + (60*5))
-
+    const ttl = ~~(timestamp/ 1000 + (60*60))
+    console.log(`TTL: ${ttl} - TIMESTAMP: ${timestamp}`)
     await ddbClient.put({
         TableName: eventsDdb,
         Item: {
@@ -61,3 +64,20 @@ async function createEvent(invoiceImage: {[key: string]: AttributeValue}, eventT
 
     return 
 }
+
+async function processExpiredTransaction(invoiceTransactionImage: { [key: string]: AttributeValue }): Promise<void> {
+    const transactionId = invoiceTransactionImage.sk.S!
+    const connectionId = invoiceTransactionImage.connectionId.S!
+    
+    console.log(`TransactionId: ${transactionId} - ConnectionId: ${connectionId}`)
+
+    if (invoiceTransactionImage.transactionStatus.S === "INVOICE_PROCESSED") {
+        console.log("Invoice processed")
+    } else {
+        console.log(`Invoice import failed - Status: ${invoiceTransactionImage.transactionStatus.S}`)
+        await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, "TIMEOUT")
+
+        await invoiceWSService.disconnectClient(connectionId)
+    }
+}
+
