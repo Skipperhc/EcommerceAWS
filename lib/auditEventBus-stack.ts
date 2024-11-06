@@ -59,6 +59,43 @@ export class AuditEventBusStack extends cdk.Stack {
         })
 
         nonValidOrderRule.addTarget(new targets.LambdaFunction(ordersErrorsFunction))
+
+
+        //source: app.invoice
+        //detailType: invoice
+        //errorDetail: FAIL_NO_INVOICE_NUMBER
+        //Ok aqui criamos a regra, quando chegar uma evento com essa descrição (source, detail e type) enviaremos esse evento ao target abaixo
+        const nonValidInvoiceRule = new events.Rule(this, "NonValidInvoiceRule", {
+            ruleName: "NonValidInvoiceRule",
+            description: "Rule matching non valid order",
+            eventBus: this.bus,
+            eventPattern: {
+                source: ["app.invoice"],
+                detailType: ["invoice"],
+                detail: {
+                    errorDetail: ["FAIL_NO_INVOICE_NUMBER"]
+                }
+            }
+        })
+
+        //target
+        const invoicesErrorsFunction = new lambdaNodeJS.NodejsFunction(this, "InvoicesErrorsFunction", {
+            // runtime: lambda.Runtime.NODEJS_20_X,
+            memorySize: 512,
+            functionName: "InvoicesErrorsFunction",
+            entry: "lambda/audit/InvoicesErrorsFunction.ts", //Qual arquivo vai ser responsavel por tratar cada request que chegar nessa função
+            handler: "handler",//e aqui a function que vai iniciar o processo, o responsável por tratar a request
+            // memorySize: 128, //quantos MB será separado para o funcionamento da função
+            timeout: cdk.Duration.seconds(2), //timeout he
+            bundling: {
+                minify: true, //vai apertar toda a função, tirar os espaços, renomear variaveis para "a" ou algo menor, vai diminuir o tamanho do arquivo
+                sourceMap: false //cancela a criação de cenários de debug, diminuindo o tamanho do arquivo novamente
+            },
+            tracing: lambda.Tracing.ACTIVE,
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+        })
+        
+        nonValidInvoiceRule.addTarget(new targets.LambdaFunction(invoicesErrorsFunction))
     }
 
 }
