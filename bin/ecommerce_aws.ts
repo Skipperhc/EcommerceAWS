@@ -23,6 +23,7 @@ const tags = {
   team: "Viiitoor"
 }
 
+//Aqui estamos criando o eventBridge, usaremos como metodo de tratamento de erros das funções
 const auditEventBus = new AuditEventBusStack(app, "AuditEvents", {
   tags: {
     cost: "Audit",
