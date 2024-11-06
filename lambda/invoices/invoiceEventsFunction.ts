@@ -53,7 +53,8 @@ async function createEvent(invoiceImage: {[key: string]: AttributeValue}, eventT
             eventType: eventType,
             info: {
                 transaction: invoiceImage.transactionId.S,
-                productId: invoiceImage.productId.N
+                productId: invoiceImage.productId.S,
+                quantity: invoiceImage.quantity.N
             }
         }
     }).promise()

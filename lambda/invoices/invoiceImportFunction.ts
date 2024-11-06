@@ -91,6 +91,7 @@ async function processRecord(record: S3EventRecord): Promise<void> {
 
             await Promise.all([sendStatuspromise, updateinvoicePromise])
         }
+        await invoiceWSService.disconnectClient(invoiceTransaction.connectionId)
     } catch (error) {
         console.log((<Error>error).message)
     }
