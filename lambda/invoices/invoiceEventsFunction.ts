@@ -78,7 +78,7 @@ async function processExpiredTransaction(invoiceTransactionImage: { [key: string
         console.log("Invoice processed")
     } else {
         //Aqui estamos enviando uma mensagem para o eventBridge
-        const putEventPromise = await eventBridgeClient.putEvents({
+        const putEventPromise = eventBridgeClient.putEvents({
             Entries: [
                 {
                     Source: "app.invocie",
@@ -86,13 +86,12 @@ async function processExpiredTransaction(invoiceTransactionImage: { [key: string
                     DetailType: "invoice",
                     Time: new Date(),
                     Detail: JSON.stringify({
-                        errorDetail: "TIMEOUT",
-                        info: {
-                        }
+                        errorDetail: 'TIMEOUT',
+                        transactionId: transactionId
                     })
                 }
             ]
-        })
+        }).promise()
 
         console.log(`Invoice import failed - Status: ${invoiceTransactionImage.transactionStatus.S}`)
         const sendStatusPromise = await invoiceWSService.sendInvoiceStatus(transactionId, connectionId, "TIMEOUT")
