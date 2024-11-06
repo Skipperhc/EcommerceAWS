@@ -90,7 +90,7 @@ async function processRecord(record: S3EventRecord): Promise<void> {
         } else {
             console.error(`Invoice import failed - non valid invoice number - TransactionId: ${key}`)
 
-            //Aqui estamos disparando 
+            //Aqui estamos enviando uma mensagem para o eventBridge
             const putEventPromise = await eventBridgeClient.putEvents({
                 Entries: [
                     {
