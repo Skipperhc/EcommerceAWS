@@ -2,6 +2,8 @@ import * as cdk from "aws-cdk-lib"
 import * as lambdaNodeJS from "aws-cdk-lib/aws-lambda-nodejs"
 import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as cwlogs from 'aws-cdk-lib/aws-logs'
+import * as cognito from "aws-cdk-lib/aws-cognito"
+import * as lambda from "aws-cdk-lib/aws-lambda"
 import { Construct } from "constructs"
 
 //para não ter de ficar adicionando vários parametros, criamos uma interface que vai ter os dados que precisamos, é um objeto com todos os parametros que queremos
@@ -13,6 +15,10 @@ interface ECommerceApiStackProps extends cdk.StackProps {
 }
 
 export class ECommerceApiStack extends cdk.Stack {
+    private productsAuthorizer: apigateway.CognitoUserPoolsAuthorizer
+    private custumerPool: cognito.UserPool
+    private adminPool: cognito.UserPool
+
     constructor(scope: Construct, id: string, props: ECommerceApiStackProps) {
         super(scope, id, props)
 
@@ -40,6 +46,10 @@ export class ECommerceApiStack extends cdk.Stack {
         //aqui usamos os parametros passado pelo props, no caso um meio de apontar para a stack de produtos
         this.createProductsService(props, api)
         this.createOrdersService(props, api)
+    }
+
+    private createCognitoAuth() {
+        
     }
 
     private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
