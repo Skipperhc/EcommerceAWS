@@ -111,6 +111,32 @@ export class ECommerceApiStack extends cdk.Stack {
             userPoolResourceServerName: "CustomerResourceServer",
             scopes: [customerMobileScope, customerWebScope]
         })
+
+        this.customerPool.addClient("customer-web-client", {
+            userPoolClientName: "customerWebClient",
+            authFlows: {
+                userPassword: true,
+            },
+            accessTokenValidity: cdk.Duration.minutes(60),
+            refreshTokenValidity: cdk.Duration.days(7),
+            oAuth: {
+                //Quando o cliente chegar aqui pelo caminho WEB, vai ter o scope da web
+                scopes: [cognito.OAuthScope.resourceServer(customerResourceServer, customerWebScope)]
+            }
+        })
+
+        this.customerPool.addClient("customer-mobile-client", {
+            userPoolClientName: "customerMobileClient",
+            authFlows: {
+                userPassword: true,
+            },
+            accessTokenValidity: cdk.Duration.minutes(60),
+            refreshTokenValidity: cdk.Duration.days(7),
+            oAuth: {
+                //Quando o cliente chegar aqui pelo caminho MOBILE, vai usar o scope para o mobile
+                scopes: [cognito.OAuthScope.resourceServer(customerResourceServer, customerMobileScope)]
+            }
+        })
     }
 
     private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
