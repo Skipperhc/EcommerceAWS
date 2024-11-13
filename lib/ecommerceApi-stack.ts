@@ -253,13 +253,25 @@ export class ECommerceApiStack extends cdk.Stack {
     private createProductsService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
         const productsFetchIntegration = new apigateway.LambdaIntegration(props.productsFetchHandler)
 
+        const productsFetchWebMobileIntegrationOption = {
+            authorizer: this.productsAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ["customer/web", "customer/mobile"]
+        }
+
         // GET "/products"
         const productsResource = api.root.addResource("products")
-        productsResource.addMethod("GET", productsFetchIntegration)
+        productsResource.addMethod("GET", productsFetchIntegration, productsFetchWebMobileIntegrationOption)
+
+        const productsFetchWebIntegrationOption = {
+            authorizer: this.productsAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
+            authorizationScopes: ["customer/web"]
+        }
 
         // GET /products/{id}
         const productIdResource = productsResource.addResource("{id}")
-        productIdResource.addMethod("GET", productsFetchIntegration)
+        productIdResource.addMethod("GET", productsFetchIntegration, productsFetchWebIntegrationOption)
 
         const productsAdminIntegration = new apigateway.LambdaIntegration(props.productsAdminHandler)
 
