@@ -16,7 +16,7 @@ interface ECommerceApiStackProps extends cdk.StackProps {
 
 export class ECommerceApiStack extends cdk.Stack {
     private productsAuthorizer: apigateway.CognitoUserPoolsAuthorizer
-    private custumerPool: cognito.UserPool
+    private customerPool: cognito.UserPool
     private adminPool: cognito.UserPool
 
     constructor(scope: Construct, id: string, props: ECommerceApiStackProps) {
@@ -43,13 +43,68 @@ export class ECommerceApiStack extends cdk.Stack {
             }
         })
 
+        this.createCognitoAuth(props, api)
+
         //aqui usamos os parametros passado pelo props, no caso um meio de apontar para a stack de produtos
         this.createProductsService(props, api)
         this.createOrdersService(props, api)
     }
 
-    private createCognitoAuth() {
+    private createCognitoAuth(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
+        //Cognito customer pool
+        this.customerPool = new cognito.UserPool(this, "CustomerPool", {
+            userPoolName: "CustomerPool",
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+            selfSignUpEnabled: true,
+            //Verificação da conta através do email, email de verificação que seeeeeempre recebo
+            autoVerify: {
+                email: true,
+                phone: false
+            },
+            userVerification: {
+                emailSubject: "Verify your email for the ECommerce service!",
+                //4 tralhas é um codigo para onde colocar o link para verificar a conta
+                emailBody: "Thanks for signing up to ECommerce service! Your verification code is {####}",
+                emailStyle: cognito.VerificationEmailStyle.CODE
+            },
+            signInAliases: {
+                username: false,
+                email: true
+            },
+            standardAttributes: {
+                fullname: {
+                    required: true,
+                    mutable: false
+                },
+                //Se der um ctrl+espaço temos vários exemplos de atributos padrões como nome, email, telefone, aniversario, etc
+            },
+            passwordPolicy: {
+                minLength: 8,
+                requireLowercase: true,
+                requireDigits: true,
+                requireSymbols: true,
+                requireUppercase: true,
+                tempPasswordValidity: cdk.Duration.days(3)
+            },
+            accountRecovery: cognito.AccountRecovery.EMAIL_ONLY
+        })
+
+        this.customerPool.addDomain("CustomerDomain", {
+            cognitoDomain: {
+                domainPrefix: "vhc-customer-service"
+            }
+        })
+
+        //Escopo para definir quais endpoints um cliente pode acessar
+        const customerWebScope = new cognito.ResourceServerScope({
+            scopeName: "web",
+            scopeDescription: "Customer Web operation"
+        })
         
+        const customerMobileScope = new cognito.ResourceServerScope({
+            scopeName: "mobile",
+            scopeDescription: "Customer Mobile operation"
+        })
     }
 
     private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
