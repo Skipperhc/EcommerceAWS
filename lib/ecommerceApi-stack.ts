@@ -137,6 +137,11 @@ export class ECommerceApiStack extends cdk.Stack {
                 scopes: [cognito.OAuthScope.resourceServer(customerResourceServer, customerMobileScope)]
             }
         })
+
+        this.productsAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "ProductsAuthorizer", {
+            authorizerName: "ProductsAuthorizer",
+            cognitoUserPools: [this.customerPool]
+        })
     }
 
     private createOrdersService(props: ECommerceApiStackProps, api: cdk.aws_apigateway.RestApi) {
