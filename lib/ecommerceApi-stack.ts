@@ -126,9 +126,47 @@ export class ECommerceApiStack extends cdk.Stack {
             accountRecovery: cognito.AccountRecovery.EMAIL_ONLY
         })
 
+        //Cognito Admin pool
+        this.adminPool = new cognito.UserPool(this, "AdminPool", {
+            userPoolName: "AdminPool",
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+            selfSignUpEnabled: false,
+            userInvitation: {
+                emailSubject: "Welcome to ECommerce administrator service",
+                emailBody: "Your username is {username} and temporary password is {####}"
+            },
+            //Verificação da conta através do email, email de verificação que seeeeeempre recebo
+            signInAliases: {
+                username: false,
+                email: true
+            },
+            standardAttributes: {
+                email: {
+                    required: true,
+                    mutable: false
+                },
+                //Se der um ctrl+espaço temos vários exemplos de atributos padrões como nome, email, telefone, aniversario, etc
+            },
+            passwordPolicy: {
+                minLength: 8,
+                requireLowercase: true,
+                requireDigits: true,
+                requireSymbols: true,
+                requireUppercase: true,
+                tempPasswordValidity: cdk.Duration.days(3)
+            },
+            accountRecovery: cognito.AccountRecovery.EMAIL_ONLY
+        })
+
         this.customerPool.addDomain("CustomerDomain", {
             cognitoDomain: {
                 domainPrefix: "vhc-customer-service"
+            }
+        })
+
+        this.adminPool.addDomain("AdminDomain", {
+            cognitoDomain: {
+                domainPrefix: "vhc-admin-service"
             }
         })
 
