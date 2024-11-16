@@ -224,6 +224,19 @@ export class ECommerceApiStack extends cdk.Stack {
             }
         })
 
+        this.adminPool.addClient("admin-web-client", {
+            userPoolClientName: "adminWebClient",
+            authFlows: {
+                userPassword: true,
+            },
+            accessTokenValidity: cdk.Duration.minutes(60),
+            refreshTokenValidity: cdk.Duration.days(7),
+            oAuth: {
+                //Quando o cliente chegar aqui pelo caminho WEB, vai ter o scope da web
+                scopes: [cognito.OAuthScope.resourceServer(adminResourceServer, adminWebScope)]
+            }
+        })
+
         this.productsAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, "ProductsAuthorizer", {
             authorizerName: "ProductsAuthorizer",
             cognitoUserPools: [this.customerPool]
