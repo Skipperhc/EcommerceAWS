@@ -192,7 +192,7 @@ export class ECommerceApiStack extends cdk.Stack {
             scopes: [customerMobileScope, customerWebScope]
         })
 
-        const adminResourceServer = this.customerPool.addResourceServer("AdminResourceServer", {
+        const adminResourceServer = this.adminPool.addResourceServer("AdminResourceServer", {
             identifier: "admin",
             userPoolResourceServerName: "AdminResourceServer",
             scopes: [adminWebScope]
