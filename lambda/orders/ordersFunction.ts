@@ -107,6 +107,11 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
                 ]
             }).promise()
 
+
+            // const listaContatos
+
+            // listaContatos
+
             console.log(result)
 
             return {

@@ -10,6 +10,7 @@ import { OrdersAppStack } from '../lib/ordersApp-stack';
 import { InvoiceWSApiStack } from '../lib/invoiceWSApi-stack';
 import { InvoicesAppLayerStack } from '../lib/InvoicesAppLayers-stack';
 import { AuditEventBusStack } from '../lib/auditEventBus-stack';
+import { AuthLayersStack } from '../lib/authLayers-stack';
 
 const app = new cdk.App();
 
@@ -32,6 +33,11 @@ const auditEventBus = new AuditEventBusStack(app, "AuditEvents", {
   env: env
 })
 
+const authLayersStack = new AuthLayersStack(app, "AuthLayers", {
+  tags: tags,
+  env: env
+})
+
 //Não existe dependência entre a Stack de produtos e de layers por conta de estarmos passando o arquivo por parametros
 const productsAppLayersStack = new ProductsAppLayersStack(app, "ProductsAppLayers", {
   tags: tags,
@@ -50,6 +56,7 @@ const productsAppStack = new ProductsAppStack(app, "ProductsApp", {
 })
 productsAppStack.addDependency(productsAppLayersStack)
 productsAppStack.addDependency(eventsDdbStack)
+productsAppStack.addDependency(authLayersStack)
 
 const ordersAppLayersStack = new OrdersAppLayersStack(app, "OrdersAppLayers", {
   tags: tags,

@@ -4,6 +4,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as cwlogs from 'aws-cdk-lib/aws-logs'
 import * as cognito from "aws-cdk-lib/aws-cognito"
 import * as lambda from "aws-cdk-lib/aws-lambda"
+import * as iam from "aws-cdk-lib/aws-iam"
 import { Construct } from "constructs"
 
 //para não ter de ficar adicionando vários parametros, criamos uma interface que vai ter os dados que precisamos, é um objeto com todos os parametros que queremos
@@ -23,13 +24,13 @@ export class ECommerceApiStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: ECommerceApiStackProps) {
         super(scope, id, props)
 
-        const logGtoup = new cwlogs.LogGroup(this, "ECommerceApiLogs")
+        const logGroup = new cwlogs.LogGroup(this, "ECommerceApiLogs")
 
         const api = new apigateway.RestApi(this, "ECommerceApi", {
             restApiName: "ECommerceApi",
             cloudWatchRole: true,
             deployOptions: {
-                accessLogDestination: new apigateway.LogGroupLogDestination(logGtoup),
+                accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
                 accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
                     httpMethod: true,
                     ip: true,
@@ -45,6 +46,16 @@ export class ECommerceApiStack extends cdk.Stack {
         })
 
         this.createCognitoAuth(props, api)
+
+        const adminUserPolicyStatement = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["cognito-idp:AdminGetUser"],
+            resources: [this.adminPool.userPoolArn]
+        })
+        const adminUserPolicy = new iam.Policy(this, "AdminGetUserPolicy", {
+            statements: [adminUserPolicyStatement]
+        })
+        adminUserPolicy.attachToRole(<iam.Role> props.productsAdminHandler.role)
 
         //aqui usamos os parametros passado pelo props, no caso um meio de apontar para a stack de produtos
         this.createProductsService(props, api)
@@ -362,7 +373,7 @@ export class ECommerceApiStack extends cdk.Stack {
         const productsFetchWebMobileIntegrationOption = {
             authorizer: this.productsAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO,
-            authorizationScopes: ["customer/web", "customer/mobile"]
+            authorizationScopes: ["customer/web", "customer/mobile", "admin/web"]
         }
 
         // GET "/products"
@@ -372,7 +383,7 @@ export class ECommerceApiStack extends cdk.Stack {
         const productsFetchWebIntegrationOption = {
             authorizer: this.productsAuthorizer,
             authorizationType: apigateway.AuthorizationType.COGNITO,
-            authorizationScopes: ["customer/web"]
+            authorizationScopes: ["customer/web", "admin/web"]
         }
 
         // GET /products/{id}
@@ -380,7 +391,7 @@ export class ECommerceApiStack extends cdk.Stack {
         productIdResource.addMethod("GET", productsFetchIntegration, productsFetchWebIntegrationOption)
 
         const productsAdminIntegration = new apigateway.LambdaIntegration(props.productsAdminHandler)
-
+        
         // POST /products
         const productRequestValidator = new apigateway.RequestValidator(this, "ProductRequestValidator", {
             restApi: api,
@@ -417,7 +428,7 @@ export class ECommerceApiStack extends cdk.Stack {
             }
         })
 
-        //POST
+        //POST /products
         productsResource.addMethod("POST", productsAdminIntegration, {
             requestValidator: productRequestValidator,
             requestModels: {

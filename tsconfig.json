@@ -51,6 +51,9 @@
       ],
       "/opt/nodejs/invoiceWSConnection": [
         "lambda/invoices/layers/invoiceWSConnection/nodejs/invoiceWSConnection"
+      ],
+      "/opt/nodejs/authUserInfo": [
+        "lambda/auth/layers/authUserInfo/nodejs/authUserInfo"
       ]
     }
   },

@@ -40,6 +40,10 @@ export class ProductsAppStack extends cdk.Stack {
         const productEventsLayerArn = ssm.StringParameter.valueForStringParameter(this, "ProductEventsLayerVersionArn")
         const productEventsLayer = lambda.LayerVersion.fromLayerVersionArn(this, "ProductEventsLayerVersionArn", productEventsLayerArn) //Estou acessando o AppLayers através de parâmetros
 
+        //Auth user info layer
+        const authUserInfoLayerArn = ssm.StringParameter.valueForStringParameter(this, "AuthUserInfoLayerVersionArn")
+        const authUserInfoLayer = lambda.LayerVersion.fromLayerVersionArn(this, "AuthUserInfoLayerVersionArn", authUserInfoLayerArn)
+
         const productEventsDlq = new sqs.Queue(this, "ProductEventsDlq", {
             queueName: "product-events-dlq",
             enforceSSL: false,
@@ -125,7 +129,7 @@ export class ProductsAppStack extends cdk.Stack {
                     PRODUCTS_DDB: this.productsDdb.tableName, //Definindo uma variavel de ambiente, no caso, passando para a productsFetchHandler o nome da tabela que ele quer acessar
                     PRODUCT_EVENTS_FUNCTION_NAME: productEventsHandler.functionName
                 },
-                layers: [productsLayer, productEventsLayer],
+                layers: [productsLayer, productEventsLayer, authUserInfoLayer],
                 tracing: lambda.Tracing.ACTIVE, //Ativando o X-RAY, com ele conseguimos ter noção de quanto tempo foi gasto em cada ação (ativando lambda, acessando o mongodb, etc)
                 insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
             }
