@@ -58,6 +58,9 @@ export class OrdersAppStack extends cdk.Stack {
             treatMissingData: cw.TreatMissingData.NOT_BREACHING
         })
 
+        const authUserInfoLayerArn = ssm.StringParameter.valueForStringParameter(this, "AuthUserInfoLayerVersionArn")
+        const authUserInfoLayer = lambda.LayerVersion.fromLayerVersionArn(this, "AuthUserInfoLayerVersionArn", authUserInfoLayerArn)
+
         //Orders Layer
         const ordersLayerArn = ssm.StringParameter.valueForStringParameter(this, "OrderLayerVersionArn")
         const ordersLayer = lambda.LayerVersion.fromLayerVersionArn(this, "OrderLayerVersionArn", ordersLayerArn) //Estou acessando o AppLayers através de parâmetros
@@ -102,9 +105,9 @@ export class OrdersAppStack extends cdk.Stack {
                 ORDER_EVENTS_TOPIC_ARN: ordersTopic.topicArn,
                 AUDIT_BUS_NAME: props.auditBus.eventBusName
             },
-            layers: [ordersLayer, productsLayer, ordersApiLayer, orderEventsLayer],
+            layers: [ordersLayer, productsLayer, ordersApiLayer, orderEventsLayer, authUserInfoLayer],
             tracing: lambda.Tracing.ACTIVE,
-            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
+            // insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0 //Adicionamos um novo layer para termos acesso ao lambda insights
         })
 
         ordersDdb.grantReadWriteData(this.ordersHandler)

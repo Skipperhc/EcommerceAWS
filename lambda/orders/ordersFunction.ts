@@ -1,4 +1,4 @@
-import { DynamoDB, EventBridge, SNS } from "aws-sdk"
+import { CognitoIdentityServiceProvider, DynamoDB, EventBridge, SNS } from "aws-sdk"
 import { Order, OrderRepository } from "/opt/nodejs/ordersLayer"
 import { Product, ProductRepository } from "/opt/nodejs/productsLayer"
 import * as AWSXRay from "aws-xray-sdk"
@@ -6,6 +6,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from "aws-lambda
 import { CarrierType, OrderProductResponse, OrderRequest, OrderResponse, PaymentType, ShippingType } from "/opt/nodejs/ordersApiLayer"
 import { OrderEvent, OrderEventType, Envelope } from "/opt/nodejs/orderEventsLayer"
 import { v4 as uuid } from "uuid"
+import { AuthInfoService } from "/opt/nodejs/authUserInfo"
 
 
 AWSXRay.captureAWS(require("aws-sdk"))
@@ -19,8 +20,12 @@ const ddbClient = new DynamoDB.DocumentClient()
 const snsClient = new SNS()
 const eventBridgeClient = new EventBridge()
 
+const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
+
 const orderRepository = new OrderRepository(ddbClient, ordersDdb)
 const productRepository = new ProductRepository(ddbClient, productsDdb)
+
+const authInfoService = new AuthInfoService(cognitoIdentityServiceProvider)
 
 export async function handler(event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> {
     const method = event.httpMethod
@@ -33,39 +38,58 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         if (event.queryStringParameters) {
             const email = event.queryStringParameters!.email!
             const orderId = event.queryStringParameters!.orderId!
-            if (email) {
-                if (orderId) {
-                    //Get one order from an user
-                    try {
-                        const order = await orderRepository.getOrder(email, orderId)
 
+            const isAdmin = authInfoService.verifyAdmin(event.requestContext.authorizer)
+            const authenticatedUser = await authInfoService.getUserInfo(event.requestContext.authorizer)
+
+            if(isAdmin || email === authenticatedUser) {
+                if (email) {
+                    if (orderId) {
+                        //Get one order from an user
+                        try {
+                            const order = await orderRepository.getOrder(email, orderId)
+                            
+                            return {
+                                statusCode: 200,
+                                body: JSON.stringify(convertToOrderResponse(order))
+                            }
+                        } catch (error) {
+                            console.log((<Error>error).message)
+                            return {
+                                statusCode: 404,
+                                body: (<Error>error).message
+                            }
+                        }
+                    } else {
+                        //Get all orders from an user
+                        const orders = await orderRepository.getOrdersByEmail(email)
                         return {
                             statusCode: 200,
-                            body: JSON.stringify(convertToOrderResponse(order))
-                        }
-                    } catch (error) {
-                        console.log((<Error>error).message)
-                        return {
-                            statusCode: 404,
-                            body: (<Error>error).message
+                            body: JSON.stringify(orders.map(convertToOrderResponse))
                         }
                     }
-                } else {
-                    //Get all orders from an user
-                    const orders = await orderRepository.getOrdersByEmail(email)
-                    return {
-                        statusCode: 200,
-                        body: JSON.stringify(orders.map(convertToOrderResponse))
-                    }
+                }
+            } else {
+                return {
+                    statusCode: 403,
+                    body: "You don't have permission to access this information"
                 }
             }
 
         } else {
             //Get all orders
-            const orders = await orderRepository.getAllOrders()
-            return {
-                statusCode: 200,
-                body: JSON.stringify(orders.map(convertToOrderResponse))
+
+            if (authInfoService.verifyAdmin(event.requestContext.authorizer)) {
+                const orders = await orderRepository.getAllOrders()
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify(orders.map(convertToOrderResponse))
+                }
+            }   else {
+                return {
+                    statusCode: 403,
+                    body: "You don't have permission to access this information"
+                }
             }
         }
     } else if (method === "POST") {
