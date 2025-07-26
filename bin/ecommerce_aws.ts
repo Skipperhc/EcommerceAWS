@@ -12,6 +12,7 @@ import { InvoicesAppLayerStack } from '../lib/InvoicesAppLayers-stack';
 import { AuditEventBusStack } from '../lib/auditEventBus-stack';
 import { AuthLayersStack } from '../lib/authLayers-stack';
 
+//2 anos atrás eu comecei o curso, agora eu terminei, tenho de manter o foco e a disciplina para concluir os proximos projetos
 const app = new cdk.App();
 
 const env: cdk.Environment = {
