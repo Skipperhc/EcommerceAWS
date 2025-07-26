@@ -360,7 +360,8 @@ export class ECommerceApiStack extends cdk.Stack {
                     },
                 },
                 required: [
-                    "email",
+                    //removendo a obrigação do email, pois a logica vai ser alterada para pegar o email do usuário autenticado
+                    // "email",
                     "productIds",
                     "payment",
                     "shipping"

@@ -34,21 +34,21 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
 
     console.log(`API Gateway requestId: ${apiRequestId} - LambdaRequestId: ${lambdaRquestId}`)
 
+    const isAdmin = authInfoService.verifyAdmin(event.requestContext.authorizer)
+    const authenticatedUser = await authInfoService.getUserInfo(event.requestContext.authorizer)
+
     if (method === "GET") {
         if (event.queryStringParameters) {
             const email = event.queryStringParameters!.email!
             const orderId = event.queryStringParameters!.orderId!
 
-            const isAdmin = authInfoService.verifyAdmin(event.requestContext.authorizer)
-            const authenticatedUser = await authInfoService.getUserInfo(event.requestContext.authorizer)
-
-            if(isAdmin || email === authenticatedUser) {
+            if (isAdmin || email === authenticatedUser) {
                 if (email) {
                     if (orderId) {
                         //Get one order from an user
                         try {
                             const order = await orderRepository.getOrder(email, orderId)
-                            
+
                             return {
                                 statusCode: 200,
                                 body: JSON.stringify(convertToOrderResponse(order))
@@ -79,13 +79,13 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         } else {
             //Get all orders
 
-            if (authInfoService.verifyAdmin(event.requestContext.authorizer)) {
+            if (isAdmin) {
                 const orders = await orderRepository.getAllOrders()
                 return {
                     statusCode: 200,
                     body: JSON.stringify(orders.map(convertToOrderResponse))
                 }
-            }   else {
+            } else {
                 return {
                     statusCode: 403,
                     body: "You don't have permission to access this information"
@@ -95,6 +95,16 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
     } else if (method === "POST") {
         console.log("POST  /orders")
         const orderRequest = JSON.parse(event.body!) as OrderRequest
+
+        if(!isAdmin) {
+            orderRequest.email = authenticatedUser
+        } else if(orderRequest.email === null) {
+            return {
+                statusCode: 400,
+                body: "Missing the order owner email"
+            }
+        }
+
         const products = await productRepository.getProductsByIds(orderRequest.productIds)
         if (products.length === orderRequest.productIds.length) {
             const order = buildOrder(orderRequest, products)
@@ -149,29 +159,36 @@ export async function handler(event: APIGatewayProxyEvent, context: Context): Pr
         const email = event.queryStringParameters!.email!
         const orderId = event.queryStringParameters!.orderId!
 
-        try {
-            const orderDelete = await orderRepository.deleteOrder(email, orderId)
+        if (isAdmin || email === authenticatedUser) {
+            try {
 
-            const eventResult = await sendOrderEvent(orderDelete, OrderEventType.DELETED, lambdaRquestId)
+                const orderDelete = await orderRepository.deleteOrder(email, orderId)
 
-            console.log(
-                `Order deleted event sent - OrderId: ${orderDelete.sk}
-                - MessageId: ${eventResult.MessageId}`
-            )
+                const eventResult = await sendOrderEvent(orderDelete, OrderEventType.DELETED, lambdaRquestId)
 
-            return {
-                statusCode: 200,
-                body: JSON.stringify(convertToOrderResponse(orderDelete))
+                console.log(
+                    `Order deleted event sent - OrderId: ${orderDelete.sk}
+                    - MessageId: ${eventResult.MessageId}`
+                )
+
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify(convertToOrderResponse(orderDelete))
+                }
+            } catch (error) {
+                console.log((<Error>error).message)
+                return {
+                    statusCode: 404,
+                    body: (<Error>error).message
+                }
             }
-        } catch (error) {
-            console.log((<Error>error).message)
+        } else {
             return {
-                statusCode: 404,
-                body: (<Error>error).message
+                statusCode: 403,
+                body: "You don't have permission to access this information"
             }
         }
     }
-
     return {
         statusCode: 400,
         body: "Bad request"
